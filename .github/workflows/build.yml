@@ -1,0 +1,28 @@
+name: Java CI with Gradle
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3.0.1
+      - name: Set up JDK
+        uses: actions/setup-java@v3.0.0
+        with:
+          distribution: adopt
+          java-version: 17
+      - name: Build Serializer
+        run: ./gradlew build
+      - name: Upload Serializer
+        uses: actions/upload-artifact@v3.0.0
+        with:
+          name: Serializer
+          path: "build/libs/serializer*.jar"

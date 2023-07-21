@@ -1,0 +1,130 @@
+//file:noinspection GroovyAssignabilityCheck
+
+plugins {
+  id("java-library")
+  id("maven-publish")
+  id("checkstyle")
+  id("com.github.spotbugs").version("5.0.14")
+  id("org.cadixdev.licenser").version("0.6.1")
+}
+
+allprojects {
+  apply(plugin: "java-library")
+  apply(plugin: "maven-publish")
+  apply(plugin: "checkstyle")
+  apply(plugin: "com.github.spotbugs")
+  apply(plugin: "org.cadixdev.licenser")
+
+  this.setGroup("net.elytrium")
+  this.setVersion("1.0.0")
+
+  compileJava() {
+    sourceCompatibility = "19"
+    targetCompatibility = "19"
+    options.getRelease().set(8)
+
+    options.setEncoding("UTF-8")
+  }
+
+  repositories {
+    mavenCentral()
+
+    maven {
+      setName("elytrium-repo")
+      setUrl("https://maven.elytrium.net/repo/")
+    }
+  }
+
+  dependencies {
+    annotationProcessor("net.java.dev.jna:jna-platform:5.13.0")
+    annotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.0")
+
+    compileOnly("com.github.spotbugs:spotbugs-annotations:$spotbugsVersion")
+
+    testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
+  }
+
+  test {
+    useJUnitPlatform()
+  }
+
+  license {
+    setHeader(file("${this.getRootDir()}/HEADER.txt"))
+
+    exclude("**/*.yml")
+  }
+
+  checkstyle {
+    setToolVersion("9.3")
+    setConfigFile(file("${this.getRootDir()}/.config/checkstyle/checkstyle.xml"))
+    setConfigProperties("configDirectory": "${this.getRootDir()}/.config/checkstyle")
+
+    // The build should immediately fail if we have errors.
+    setMaxErrors(0)
+    setMaxWarnings(0)
+  }
+
+  spotbugsMain {
+    reports {
+      html {
+        getRequired().set(true)
+        getOutputLocation().set(file("${this.getBuildDir()}/reports/spotbugs/main/spotbugs.html"))
+        setStylesheet("fancy-hist.xsl")
+      }
+    }
+  }
+
+  task javadocJar(type: Jar) {
+    getArchiveClassifier().set("javadoc")
+    from(javadoc)
+  }
+
+  task sourcesJar(type: Jar) {
+    getArchiveClassifier().set("sources")
+    from(sourceSets.main.getAllSource())
+  }
+
+  publishing {
+    repositories {
+      maven {
+        credentials {
+          setUsername(System.getenv("ELYTRIUM_MAVEN_USERNAME"))
+          setPassword(System.getenv("ELYTRIUM_MAVEN_PASSWORD"))
+        }
+
+        setName("elytrium-repo")
+        setUrl("https://maven.elytrium.net/repo/")
+      }
+    }
+
+    publications {
+      maven(MavenPublication) {
+        from(getComponents().java)
+
+        artifact(javadocJar)
+        artifact(sourcesJar)
+      }
+    }
+  }
+
+  javadoc {
+    getOptions().setEncoding("UTF-8")
+    getOptions().setCharSet("UTF-8")
+    getOptions().setSource("17")
+    getOptions().links("https://docs.oracle.com/en/java/javase/17/docs/api/")
+
+    // Disable the crazy super-strict DocLint tool in Java 8.
+    getOptions().addStringOption("Xdoclint:none", "-quiet")
+
+    // Remove "undefined" from search paths when generating javadoc for a non-modular project. (JDK-8215291)
+    if (JavaVersion.current() >= JavaVersion.VERSION_1_9 && JavaVersion.current() < JavaVersion.VERSION_12) {
+      getOptions().addBooleanOption("-no-module-directories", true)
+    }
+  }
+
+  artifacts {
+    archives(javadocJar)
+    archives(sourcesJar)
+  }
+}

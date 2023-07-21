@@ -1,0 +1,153 @@
+final-field: "final value"
+regular-field: "regular \"value\""
+regular-float-field: 3.1415927
+regular-double-field: 2.718281828459045
+enum-field: ENUM_VALUE_1
+string-with-placeholders: "This is {TEST} with {TEST2}"
+string-with-placeholders-2: "This is {TEST} with {TEST2}"
+another-string-with-placeholders: "{PLACEHOLDER} {ANOTHER_PLACEHOLDER}"
+int-2-string-map:
+  1: "v1"
+  15555: "v2"
+  44: "v3"
+object-list-with-maps:
+  - test:
+      test2: "test"
+  - test:
+      test2: "test"
+list-of-string-2-object-map:
+  - test:
+      test2: "test"
+  - test:
+      test2: "test"
+  - the:
+      slow: "rush"
+chaos-map-list:
+  - test-1:
+      test-1-1:
+        - final-field: "final"
+          some-string: "some value"
+          some-integer: 1234
+          other-node-seq:
+            a: "value"
+            b: 10
+      test-1-2:
+        - final-field: "final"
+          some-string: "some value"
+          some-integer: 1234
+          other-node-seq:
+            a: "value"
+            b: 10
+    test-2:
+      test-2-1:
+        - final-field: "final"
+          some-string: "some value"
+          some-integer: 1234
+          other-node-seq:
+            a: "value"
+            b: 10
+  - porsh:
+      okean:
+        - final-field: "final"
+          some-string: "some value"
+          some-integer: 1234
+          other-node-seq:
+            a: "value"
+            b: 10
+chaos-map:
+  test-1:
+    test-1-1:
+      - "element"
+    test-1-2:
+      - "element"
+  test-2:
+    test-2-1:
+      - "element"
+# PREPEND comment Line 1
+# PREPEND comment Line 2
+prepend:
+  string-field: "string value"
+
+  field-with-comment-at-same-line: "string value" # fieldWithCommentAtSameLine comment # You can still see this comment, but why do you need this?
+
+
+
+  same-line:
+    append:
+      field-1: "string value"
+      # field1 APPEND comment
+      # Second line
+      # field2 PREPEND comment
+      # Line 2
+      field-2: "string value"
+      nested-lists:
+        - - - "0"
+            - "1"
+            - "2"
+          - - "a"
+            - "b"
+            - "c"
+        - - - "3"
+            - "4"
+            - "5"
+          - - "d"
+            - "e"
+            - "f" # SAME_LINE comment Line 1
+  # SAME_LINE APPEND second comment Line 1
+
+  # SAME_LINE APPEND second comment Line 2
+node-test:
+  node-seq-map:
+    1:
+      final-field: "final"
+      some-string: "some value"
+      some-integer: 1234
+      other-node-seq:
+        a: "value"
+        b: 10
+    b:
+      final-field: "final"
+      some-string: "2nd string"
+      some-integer: 1234
+      other-node-seq:
+        a: "value"
+        b: 10
+    c::c:
+      final-field: "final"
+      some-string: "3rd string"
+      some-integer: 4321
+      other-node-seq:
+        a: "value"
+        b: 10
+  node-seq-list:
+    - final-field: "final"
+      some-string: "first"
+      some-integer: 100
+      other-node-seq:
+        a: "value"
+        b: 10
+    - final-field: "final"
+      some-string: "second"
+      some-integer: 200
+      other-node-seq:
+        a: "value"
+        b: 10
+
+
+date-field: 2234567890
+path-field: "test2.3gp"
+list-field:
+  - "test"
+  - 123
+numeric-1234-field: "test"
+changed-name-field:
+  test: 0
+test-class:
+  field-x: 0
+  field-y: 0
+  field-z: 0
+  nested-class-name: "sample-name"
+created-test-class:
+  strings-list:
+    - "test-1"
+    - "test-2"
