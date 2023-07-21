@@ -17,15 +17,10 @@ Java Library to (de-)serialize data in various formats (e.g. JSON, YAML)
 
 ### Setup
 
-- Maven:
+Elytrium Java Serializer is uploaded to the Maven Central repository, so you can just add it as a dependency to your maven or gradle project.
+
+- Maven (pom.xml):
    ```xml
-       <repositories>
-           <repository>
-               <id>elytrium-repo</id>
-               <url>https://maven.elytrium.net/repo/</url>
-           </repository>
-       </repositories>
-   
        <dependencies>
            <dependency>
                <groupId>net.elytrium</groupId>
@@ -34,15 +29,8 @@ Java Library to (de-)serialize data in various formats (e.g. JSON, YAML)
            </dependency>
        </dependencies>
    ```
-- Gradle:
+- Gradle (build.gradle):
    ```groovy
-       repositories {
-           maven {
-               setName("elytrium-repo")
-               setUrl("https://maven.elytrium.net/repo/")
-           }
-       }
-   
        dependencies {
            implementation("net.elytrium:serializer:1.0.0")
        }

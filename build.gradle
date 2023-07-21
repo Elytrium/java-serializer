@@ -2,6 +2,7 @@
 
 plugins {
   id("java-library")
+  id("signing")
   id("maven-publish")
   id("checkstyle")
   id("com.github.spotbugs").version("5.0.14")
@@ -96,14 +97,46 @@ allprojects {
         setName("elytrium-repo")
         setUrl("https://maven.elytrium.net/repo/")
       }
+      maven {
+        credentials {
+          setUsername(System.getenv("ELYTRIUM_OSSRH_USERNAME"))
+          setPassword(System.getenv("ELYTRIUM_OSSRH_PASSWORD"))
+        }
+
+        setName("ossrh-repo")
+        setUrl("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+      }
     }
 
     publications {
       maven(MavenPublication) {
-        from(getComponents().java)
+        pom {
+          setName('Elytrium Java Serializer')
+          setDescription('Java Library to (de-)serialize data in various formats (e.g. JSON, YAML)')
+          setUrl('https://github.com/Elytrium/java-serializer')
+          licenses {
+            license {
+              setName('GNU Lesser General Public License v3.0')
+              setUrl('https://www.gnu.org/licenses/lgpl-3.0.en.html')
+            }
+          }
+          developers {
+            developer {
+              setId('hevav')
+              setName('Petr Ilin')
+              setEmail('p.ilin@elytrium.ru')
+            }
+          }
+          scm {
+            setConnection('scm:git:git://https://github.com/Elytrium/java-serializer.git')
+            setDeveloperConnection('scm:git:ssh://https://github.com/Elytrium/java-serializer.git')
+            setUrl('https://https://github.com/Elytrium/java-serializer')
+          }
+        }
 
         artifact(javadocJar)
         artifact(sourcesJar)
+        artifact(jar)
       }
     }
   }
@@ -126,5 +159,13 @@ allprojects {
   artifacts {
     archives(javadocJar)
     archives(sourcesJar)
+    archives(jar)
+  }
+
+  signing {
+    if (hasProperty('signing.keyId')) {
+      sign(configurations.archives)
+      sign(publishing.publications.maven)
+    }
   }
 }
