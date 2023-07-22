@@ -18,5 +18,6 @@
 package net.elytrium.serializer.placeholders;
 
 public interface PlaceholderReplacer<T> {
+
   T replace(T value, String[] placeholders, Object... values);
 }

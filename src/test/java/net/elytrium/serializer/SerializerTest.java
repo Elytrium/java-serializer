@@ -26,9 +26,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import net.elytrium.serializer.annotations.Comment;
@@ -75,6 +75,12 @@ class SerializerTest {
   void testConfig() throws IOException {
     Path configWithoutPrefixPath = Files.createTempFile("config", ".yml");
     this.processTempFile(configWithoutPrefixPath);
+    /*
+    try (InputStream inputStream = SerializerTest.class.getResourceAsStream("/config.yml")) {
+      java.util.Objects.requireNonNull(inputStream);
+      Files.copy(inputStream, configWithoutPrefixPath);
+    }
+    */
     Settings settings = new Settings();
     for (int i = 0; i < 4; ++i) {
       if (settings.reload(configWithoutPrefixPath) == LoadResult.CONFIG_NOT_EXISTS) {
@@ -93,16 +99,20 @@ class SerializerTest {
     Assertions.assertEquals("string value", settings.prepend.fieldWithCommentAtSameLine);
     Assertions.assertEquals("string value", settings.prepend.sameLine.append.field1);
     Assertions.assertEquals("string value", settings.prepend.sameLine.append.field2);
-    Assertions.assertEquals("This is string with placeholders",
-        Placeholders.replace(settings.stringWithPlaceholders, "string", "placeholders"));
-    Assertions.assertEquals("This is string with placeholders",
-        Placeholders.replace(settings.stringWithPlaceholders2, "placeholders", "string"));
+    Assertions.assertEquals(
+        "This is string with placeholders",
+        Placeholders.replace(settings.stringWithPlaceholders, "string", "placeholders")
+    );
+    Assertions.assertEquals(
+        "This is string with placeholders",
+        Placeholders.replace(settings.stringWithPlaceholders2, "placeholders", "string")
+    );
     Assertions.assertEquals("value 1 value 2", Placeholders.replace(settings.anotherStringWithPlaceholders, "value 1", "value 2"));
     Assertions.assertEquals("{PLACEHOLDER} {ANOTHER_PLACEHOLDER}", settings.anotherStringWithPlaceholders);
     Assertions.assertEquals(2, settings.prepend.sameLine.append.nestedLists.size());
     Assertions.assertEquals(2, settings.objectListWithMaps.size());
     Assertions.assertEquals(3, settings.listOfString2ObjectMap.size());
-    Assertions.assertEquals(2, settings.chaosMapList.size());
+    Assertions.assertEquals(3, settings.chaosMapList.size());
     Assertions.assertEquals(2, settings.chaosMap.size());
 
     settings.int2StringMap.forEach((key, value) -> {
@@ -184,13 +194,13 @@ class SerializerTest {
   }
 
   private static <K, V> Map<K, V> map(K k1, V v1) {
-    Map<K, V> map = new LinkedHashMap<>();
+    Map<K, V> map = new LinkedHashMap<>(1);
     map.put(k1, v1);
     return map;
   }
 
   private static <K, V> Map<K, V> map(K k1, V v1, K k2, V v2) {
-    Map<K, V> map = new LinkedHashMap<>();
+    Map<K, V> map = new LinkedHashMap<>(2);
     map.put(k1, v1);
     map.put(k2, v2);
     return map;
@@ -198,7 +208,7 @@ class SerializerTest {
 
   @SuppressWarnings("SameParameterValue")
   private static <K, V> Map<K, V> map(K k1, V v1, K k2, V v2, K k3, V v3) {
-    Map<K, V> map = new LinkedHashMap<>();
+    Map<K, V> map = new LinkedHashMap<>(3);
     map.put(k1, v1);
     map.put(k2, v2);
     map.put(k3, v3);
@@ -207,7 +217,7 @@ class SerializerTest {
 
   @SuppressWarnings("SameParameterValue")
   private static <K, V> Map<K, V> map(K k1, V v1, K k2, V v2, K k3, V v3, K k4, V v4) {
-    LinkedHashMap<K, V> map = new LinkedHashMap<>();
+    LinkedHashMap<K, V> map = new LinkedHashMap<>(4);
     map.put(k1, v1);
     map.put(k2, v2);
     map.put(k3, v3);
@@ -215,45 +225,41 @@ class SerializerTest {
     return map;
   }
 
-  private static <V> List<V> list(V v1) {
-    List<V> list = new LinkedList<>();
-    list.add(v1);
-    return list;
-  }
+  /*
+  @SuppressWarnings("unchecked")
+  private static <K, V> Map<K, V> map(Object... values) {
+    int capacity = values.length / 2;
+    if (capacity != values.length / 2.0) {
+      throw new IllegalArgumentException("Invalid arguments amount!");
+    }
 
-  private static <V> List<V> list(V v1, V v2) {
-    List<V> list = new LinkedList<>();
-    list.add(v1);
-    list.add(v2);
-    return list;
-  }
+    Map<K, V> result = new LinkedHashMap<>(capacity);
+    for (int i = 0; i < values.length; ++i) {
+      result.put((K) values[i], (V) values[++i]);
+    }
 
-  private static <V> List<V> list(V v1, V v2, V v3) {
-    List<V> list = new LinkedList<>();
-    list.add(v1);
-    list.add(v2);
-    list.add(v3);
-    return list;
+    return result;
   }
+  */
 
+  @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
   public static class Settings extends YamlSerializable {
 
-    private static final SerializerConfig CONFIG = new SerializerConfig.Builder()
-        .registerSerializer(new PathSerializer()).registerSerializer(new ClassSerializer<>(String.class, String.class) {
+    private static final SerializerConfig CONFIG = new SerializerConfig.Builder().registerSerializer(new ClassSerializer<>(String.class, String.class) {
 
-          @Override
-          public String serialize(String from) {
-            return from == null ? "" : from;
-          }
+      @Override
+      public String serialize(String from) {
+        return from == null ? "" : from;
+      }
 
-          @Override
-          public String deserialize(String from) {
-            return from.trim().isEmpty() ? null : from;
-          }
-        }).build();
+      @Override
+      public String deserialize(String from) {
+        return from.trim().isEmpty() ? null : from;
+      }
+    }).registerSerializer(new PathSerializer()).build();
 
     Settings() {
-      this.setConfig(CONFIG);
+      this.setConfig(Settings.CONFIG);
     }
 
     @Final
@@ -277,27 +283,29 @@ class SerializerTest {
 
     public Map<Integer, String> int2StringMap = SerializerTest.map(1, "v1", 15555, "v2", 44, "v3");
 
-    public final List<Object> objectListWithMaps = SerializerTest.list(
+    public final List<Object> objectListWithMaps = Arrays.asList(
         SerializerTest.map("test", SerializerTest.map("test2", "test")),
         SerializerTest.map("test", SerializerTest.map("test2", "test"))
     );
-    public final List<Map<String, Object>> listOfString2ObjectMap = SerializerTest.list(
+    public final List<Map<String, Object>> listOfString2ObjectMap = Arrays.asList(
         SerializerTest.map("test", SerializerTest.map("test2", "test")),
         SerializerTest.map("test", SerializerTest.map("test2", "test")),
         SerializerTest.map("the", SerializerTest.map("slow", "rush"))
     );
-    public List<Map<String, Map<String, List<NodeTest.TestNodeSequence>>>> chaosMapList = SerializerTest.list(
+    public List<Map<String, Map<String, List<NodeTest.TestNodeSequence>>>> chaosMapList = Arrays.asList(
         SerializerTest.map(
             "test-1", SerializerTest.map("test-1-1",
-                SerializerTest.list(new NodeTest.TestNodeSequence()),
-                "test-1-2", SerializerTest.list(new NodeTest.TestNodeSequence())),
-            "test-2", SerializerTest.map("test-2-1", SerializerTest.list(new NodeTest.TestNodeSequence()))
+                Arrays.asList(new NodeTest.TestNodeSequence()),
+                "test-1-2", Arrays.asList(new NodeTest.TestNodeSequence())
+            ),
+            "test-2", SerializerTest.map("test-2-1", Arrays.asList(new NodeTest.TestNodeSequence()))
         ),
-        SerializerTest.map("porsh", SerializerTest.map("okean", SerializerTest.list(new NodeTest.TestNodeSequence())))
+        SerializerTest.map("porsh", SerializerTest.map("okean", Arrays.asList(new NodeTest.TestNodeSequence()))),
+        SerializerTest.map("4e", SerializerTest.map("naJlulll", Arrays.asList(new NodeTest.TestNodeSequence())))
     );
     public Map<String, Map<String, List<String>>> chaosMap = SerializerTest.map(
-        "test-1", SerializerTest.map("test-1-1", SerializerTest.list("element"), "test-1-2", SerializerTest.list("element")),
-        "test-2", SerializerTest.map("test-2-1", SerializerTest.list("element"))
+        "test-1", SerializerTest.map("test-1-1", Arrays.asList("element"), "test-1-2", Arrays.asList("element")),
+        "test-2", SerializerTest.map("test-2-1", Arrays.asList("element"))
     );
 
     @Comment({
@@ -329,9 +337,9 @@ class SerializerTest {
       )
       @Comment(
           value = {
-              @CommentValue(" SAME_LINE APPEND second comment Line 1"),
+              @CommentValue(" sameLine APPEND second comment Line 1"),
               @CommentValue(type = CommentValue.Type.NEW_LINE),
-              @CommentValue(" SAME_LINE APPEND second comment Line 2")
+              @CommentValue(" sameLine APPEND second comment Line 2")
           },
           at = Comment.At.APPEND
       )
@@ -360,14 +368,14 @@ class SerializerTest {
               at = Comment.At.PREPEND
           )
           public String field2 = "string value";
-          public List<List<List<String>>> nestedLists = SerializerTest.list(
-              SerializerTest.list(
-                  SerializerTest.list("0", "1", "2"),
-                  SerializerTest.list("a", "b", "c")
+          public List<List<List<String>>> nestedLists = Arrays.asList(
+              Arrays.asList(
+                  Arrays.asList("0", "1", "2"),
+                  Arrays.asList("a", "b", "c")
               ),
-              SerializerTest.list(
-                  SerializerTest.list("3", "4", "5"),
-                  SerializerTest.list("d", "e", "f")
+              Arrays.asList(
+                  Arrays.asList("3", "4", "5"),
+                  Arrays.asList("d", "e", "f")
               )
           );
         }
@@ -384,7 +392,7 @@ class SerializerTest {
           "c::c", new TestNodeSequence("3rd string", 4321)
       );
 
-      public List<TestNodeSequence> nodeSeqList = SerializerTest.list(new TestNodeSequence("first", 100), new TestNodeSequence("second", 200));
+      public List<TestNodeSequence> nodeSeqList = Arrays.asList(new TestNodeSequence("first", 100), new TestNodeSequence("second", 200));
 
       public static class TestNodeSequence {
 
@@ -413,6 +421,7 @@ class SerializerTest {
         }
 
         public static class OtherNodeSeq {
+
           public String a = "value";
           public int b = 10;
         }
@@ -425,7 +434,7 @@ class SerializerTest {
 
     public Path pathField = Paths.get("test.3gp");
 
-    public List<Object> listField = SerializerTest.list("test", 123);
+    public List<Object> listField = Arrays.asList("test", 123);
 
     public String numeric1234Field = "test";
 
@@ -443,7 +452,8 @@ class SerializerTest {
   }
 
   public static class CreatedTestClass {
-    public List<String> stringsList = SerializerTest.list("test-1", "test-2");
+
+    public List<String> stringsList = Arrays.asList("test-1", "test-2");
   }
 
   public static class ExternalDeserializedClass {

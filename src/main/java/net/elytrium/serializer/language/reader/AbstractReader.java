@@ -73,7 +73,9 @@ public abstract class AbstractReader {
     synchronized (this) {
       Type type = node.getGenericType();
       Class<?> clazz = node.getType();
-      Deque<ClassSerializer<?, ?>> serializerStack = new ArrayDeque<>();
+      Deque<ClassSerializer<?, ?>> serializerStack = new ArrayDeque<>(
+          Math.min(16, this.config.getRegisteredSerializers() + 1/*If first iteration and annotation serializer not cached yet.*/)
+      );
 
       Serializer serializer = node.getAnnotation(Serializer.class);
       if (serializer != null) {
@@ -96,7 +98,6 @@ public abstract class AbstractReader {
 
       try {
         Object value = this.readAndDeserializeByType(serializerStack, type);
-
         if (type == Integer.class || type == int.class) {
           node.setInt(holder, ((Long) value).intValue());
         } else if (type == Short.class || type == short.class) {
@@ -179,13 +180,7 @@ public abstract class AbstractReader {
           return this.readNumber(clazz);
         } else {
           try {
-            Object result;
-            if (!clazz.isInstance(holder)) {
-              result = clazz.getDeclaredConstructor().newInstance();
-            } else {
-              result = holder;
-            }
-
+            Object result = clazz.isInstance(holder) ? holder : clazz.getDeclaredConstructor().newInstance();
             this.readSerializableObject(result, clazz);
             return result;
           } catch (ReflectiveOperationException e) {
@@ -238,7 +233,7 @@ public abstract class AbstractReader {
         return decimal ? (Number) this.readDouble() : (Number) this.readLong();
       } catch (NumberFormatException e) {
         if (this.config.isSafeMode()) {
-          LOGGER.log(Level.WARNING, "Can't read number due to exception caught, overwriting the value by 0", e);
+          AbstractReader.LOGGER.log(Level.WARNING, "Can't read number due to exception caught, overwriting the value by 0", e);
           return decimal ? (Number) 0.0 : (Number) 0L;
         } else {
           throw new RuntimeException(e);
@@ -328,7 +323,7 @@ public abstract class AbstractReader {
       case '\r' -> switch (this.carriageType) {
         case LF -> throw new IllegalStateException("Caught a Carriage Return in LF mode");
         case CRLF -> this.readRaw();
-        case CR -> NEW_LINE;
+        case CR -> AbstractReader.NEW_LINE;
         case UNKNOWN -> {
           char nextChar = this.readRaw();
           if (nextChar == '\n') {
@@ -338,15 +333,15 @@ public abstract class AbstractReader {
             this.seekBuffer.add(nextChar);
           }
 
-          yield NEW_LINE;
+          yield AbstractReader.NEW_LINE;
         }
       };
       case '\n' -> switch (this.carriageType) {
         case CR -> throw new IllegalStateException("Caught a Line Feed in CR mode");
-        case CRLF, LF -> NEW_LINE;
+        case CRLF, LF -> AbstractReader.NEW_LINE;
         case UNKNOWN -> {
           this.carriageType = CarriageType.LF;
-          yield NEW_LINE;
+          yield AbstractReader.NEW_LINE;
         }
       };
       default -> this.singleCharBuffer[0];

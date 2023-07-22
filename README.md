@@ -21,27 +21,28 @@ Elytrium Java Serializer is uploaded to the Maven Central repository, so you can
 
 - Maven (pom.xml):
    ```xml
-       <dependencies>
-           <dependency>
-               <groupId>net.elytrium</groupId>
-               <artifactId>serializer</artifactId>
-               <version>1.0.0</version>
-           </dependency>
-       </dependencies>
+   <dependencies>
+     <dependency>
+       <groupId>net.elytrium</groupId>
+       <artifactId>serializer</artifactId>
+       <version>1.0.0</version>
+     </dependency>
+   </dependencies>
    ```
 - Gradle (build.gradle):
    ```groovy
-       dependencies {
-           implementation("net.elytrium:serializer:1.0.0")
-       }
+   dependencies {
+     implementation("net.elytrium:serializer:1.0.0")
+   }
    ```
 
 ### Without any modifications
 
 1) Create the class
     ```java
-    public static class Settings {
-        public String regularField = "regular value";
+    public class Settings {
+
+      public String regularField = "regular value";
     }
     ```
 2) Create YamlWriter
@@ -59,16 +60,17 @@ Elytrium Java Serializer is uploaded to the Maven Central repository, so you can
 
 ### With some modifications
 
-1) Create the class that extends YamlSerializable. You can optionally modify the config and call ``YamlSerializable#setConfig(SerializerConfig)`` method. You can safely remove ``this.setConfig(CONFIG)``.
+1) Create the class that extends YamlSerializable. You can optionally modify the config and call ``YamlSerializable#setConfig(SerializerConfig)`` method. You can safely remove ``this.setConfig(Settings.CONFIG)``.
     ```java
-    public static class Settings extends YamlSerializable {
-        private static final SerializerConfig CONFIG = new SerializerConfig.Builder().build();
+    public class Settings extends YamlSerializable {
     
-        Settings() {
-          this.setConfig(CONFIG);
-        }
-    
-        public String regularField = "regular value";
+      private static final SerializerConfig CONFIG = new SerializerConfig.Builder().build();
+
+      Settings() {
+        this.setConfig(Settings.CONFIG);
+      }
+
+      public String regularField = "regular value";
     }
     ```
 2) Instantiate it.
@@ -83,22 +85,22 @@ Elytrium Java Serializer is uploaded to the Maven Central repository, so you can
 ### Comments and New lines
 
 ```java
-   @NewLine(amount = 3)
-   @Comment(
-           value = {
-                   @CommentValue(" SAME_LINE comment Line 1")
-           },
-           at = Comment.At.SAME_LINE
-   )
-   @Comment(
-           value = {
-                   @CommentValue(" SAME_LINE APPEND second comment Line 1"),
-                   @CommentValue(type = CommentValue.Type.NEW_LINE),
-                   @CommentValue(" SAME_LINE APPEND second comment Line 2")
-           },
-           at = Comment.At.APPEND
-   )
-   public String regularField = "regular value";
+  @NewLine(amount = 3)
+  @Comment(
+      value = {
+          @CommentValue(" SAME_LINE comment Line 1")
+      },
+      at = Comment.At.SAME_LINE
+  )
+  @Comment(
+      value = {
+          @CommentValue(" SAME_LINE APPEND second comment Line 1"),
+          @CommentValue(type = CommentValue.Type.NEW_LINE),
+          @CommentValue(" SAME_LINE APPEND second comment Line 2")
+      },
+      at = Comment.At.APPEND
+  )
+  public String regularField = "regular value";
 ```
 
 ### Final and Transient fields
@@ -107,23 +109,20 @@ Final fields - unmodifiable fields that will be saved in the config. \
 Transient fields - unmodifiable fields that won't be saved in the config.
 
 ```java
+  public final String finalField = "final";
   @Final
-  public String finalField = "final";
-  
-  public final String finalFieldToo = "final";
-  
-  
+  public String finalFieldToo = "final";
+
+  public transient String transientField = "transient";
   @Transient
-  public String transientField = "transient";
-  
-  public transient String transientFieldToo = "transient";
+  public String transientFieldToo = "transient";
 ```
 
 ### Placeholders
 
 ```java
-   @RegisterPlaceholders({"PLACEHOLDER", "another-placeholder"})
-   public String anotherStringWithPlaceholders = "{PLACEHOLDER} {ANOTHER_PLACEHOLDER}";
+  @RegisterPlaceholders({"PLACEHOLDER", "another-placeholder"})
+  public String anotherStringWithPlaceholders = "{PLACEHOLDER} {ANOTHER_PLACEHOLDER}";
 ```
 
 ```java
@@ -143,6 +142,7 @@ Placeholders.replace will work even with custom placeholder.
 
 ```java
   public class StringPlaceholderReplacer implements PlaceholderReplacer<String> {
+
     @Override
     public String replace(String value, String[] placeholders, Object... values) {
       for (int i = Math.min(values.length, placeholders.length) - 1; i >= 0; --i) {
@@ -203,7 +203,7 @@ Custom serializers will be instantiated once for one SerializableConfig.
 ```
 
 ```java
-  public static class ExternalClassSerializer extends ClassSerializer<ExternalDeserializedClass, Map<String, Object>> {
+  public class ExternalClassSerializer extends ClassSerializer<ExternalDeserializedClass, Map<String, Object>> {
 
     @SuppressWarnings("unchecked")
     protected ExternalClassSerializer() {
@@ -232,18 +232,18 @@ Custom serializers will be instantiated once for one SerializableConfig.
 In case if you can't add @Serializer annotation or if you have multiple entries with similar classes, you can register the serializer in the config.
 
 ```java
-  private static final SerializerConfig CONFIG = new SerializerConfig.Builder()
-    .registerSerializer(new PathSerializer()).registerSerializer(new ClassSerializer<>(String.class, String.class) {
-      @Override
-      public String serialize(String from) {
-        return from == null ? "" : from;
-      }
+  private static final SerializerConfig CONFIG = new SerializerConfig.Builder().registerSerializer(new PathSerializer()).registerSerializer(new ClassSerializer<>(String.class, String.class) {
+
+    @Override
+    public String serialize(String from) {
+      return from == null ? "" : from;
+    }
  
-      @Override
-      public String deserialize(String from) {
-        return from.trim().isEmpty() ? null : from;
-      }
-    }).build();
+    @Override
+    public String deserialize(String from) {
+      return from.trim().isEmpty() ? null : from;
+    }
+  }).build();
 ```
 
 ## Support

@@ -1,171 +1,151 @@
-//file:noinspection GroovyAssignabilityCheck
-
-plugins {
+plugins() {
   id("java-library")
+
   id("signing")
   id("maven-publish")
+
   id("checkstyle")
   id("com.github.spotbugs").version("5.0.14")
   id("org.cadixdev.licenser").version("0.6.1")
 }
 
-allprojects {
-  apply(plugin: "java-library")
-  apply(plugin: "maven-publish")
-  apply(plugin: "checkstyle")
-  apply(plugin: "com.github.spotbugs")
-  apply(plugin: "org.cadixdev.licenser")
+this.group = "net.elytrium"
+this.version = "1.0.1-SNAPSHOT"
 
-  this.setGroup("net.elytrium")
-  this.setVersion("1.0.0")
+compileJava() {
+  sourceCompatibility = "19"
+  targetCompatibility = "19"
+  options.getRelease().set(8)
 
-  compileJava() {
-    sourceCompatibility = "19"
-    targetCompatibility = "19"
-    options.getRelease().set(8)
+  options.setEncoding("UTF-8")
+}
 
-    options.setEncoding("UTF-8")
-  }
+repositories() {
+  mavenCentral()
+}
 
-  repositories {
-    mavenCentral()
+dependencies() {
+  annotationProcessor("net.java.dev.jna:jna-platform:5.13.0")
+  annotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.0")
 
-    maven {
-      setName("elytrium-repo")
-      setUrl("https://maven.elytrium.net/repo/")
+  compileOnly("com.github.spotbugs:spotbugs-annotations:$spotbugsVersion")
+
+  testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
+  testImplementation("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
+}
+
+test() {
+  useJUnitPlatform()
+}
+
+checkstyle() {
+  toolVersion = "10.12.1"
+
+  configFile = file(".config/checkstyle/checkstyle.xml")
+  configProperties = ["configDirectory": "$rootDir/.config/checkstyle"]
+  maxErrors = 0
+  maxWarnings = 0
+}
+
+spotbugsMain() {
+  reports() {
+    html() {
+      required = true
+      outputLocation = file("$buildDir/reports/spotbugs/main/spotbugs.html")
+      stylesheet = "fancy-hist.xsl"
     }
   }
+}
 
-  dependencies {
-    annotationProcessor("net.java.dev.jna:jna-platform:5.13.0")
-    annotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.0")
+license() {
+  header = file("HEADER.txt")
 
-    compileOnly("com.github.spotbugs:spotbugs-annotations:$spotbugsVersion")
+  exclude("**/*.yml")
+}
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
-    testImplementation("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
+tasks.register("sourcesJar", Jar) {
+  archiveClassifier = "sources"
+  from(sourceSets.main.getAllSource())
+}
+
+tasks.register("javadocJar", Jar) {
+  archiveClassifier = "javadoc"
+  from(javadoc)
+}
+
+javadoc() {
+  options.setEncoding("UTF-8")
+  options.setSource("17")
+  options.links("https://docs.oracle.com/en/java/javase/17/docs/api/")
+  options.addStringOption("Xdoclint:none", "-quiet")
+  if (JavaVersion.current() >= JavaVersion.VERSION_1_9 && JavaVersion.current() < JavaVersion.VERSION_12) {
+    options.addBooleanOption("-no-module-directories", true)
   }
+}
 
-  test {
-    useJUnitPlatform()
-  }
+artifacts() {
+  archives(javadocJar)
+  archives(sourcesJar)
+  archives(jar)
+}
 
-  license {
-    setHeader(file("${this.getRootDir()}/HEADER.txt"))
-
-    exclude("**/*.yml")
-  }
-
-  checkstyle {
-    setToolVersion("9.3")
-    setConfigFile(file("${this.getRootDir()}/.config/checkstyle/checkstyle.xml"))
-    setConfigProperties("configDirectory": "${this.getRootDir()}/.config/checkstyle")
-
-    // The build should immediately fail if we have errors.
-    setMaxErrors(0)
-    setMaxWarnings(0)
-  }
-
-  spotbugsMain {
-    reports {
-      html {
-        getRequired().set(true)
-        getOutputLocation().set(file("${this.getBuildDir()}/reports/spotbugs/main/spotbugs.html"))
-        setStylesheet("fancy-hist.xsl")
+publishing() {
+  repositories() {
+    maven() {
+      credentials() {
+        username = System.getenv("ELYTRIUM_MAVEN_USERNAME")
+        password = System.getenv("ELYTRIUM_MAVEN_PASSWORD")
       }
+
+      name = "elytrium-repo"
+      url = "https://maven.elytrium.net/repo/"
+    }
+
+    maven() {
+      credentials() {
+        username = System.getenv("ELYTRIUM_OSSRH_USERNAME")
+        password = System.getenv("ELYTRIUM_OSSRH_PASSWORD")
+      }
+
+      name = "ossrh-repo"
+      url = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
     }
   }
 
-  task javadocJar(type: Jar) {
-    getArchiveClassifier().set("javadoc")
-    from(javadoc)
-  }
-
-  task sourcesJar(type: Jar) {
-    getArchiveClassifier().set("sources")
-    from(sourceSets.main.getAllSource())
-  }
-
-  publishing {
-    repositories {
-      maven {
-        credentials {
-          setUsername(System.getenv("ELYTRIUM_MAVEN_USERNAME"))
-          setPassword(System.getenv("ELYTRIUM_MAVEN_PASSWORD"))
+  publications.create("publication", MavenPublication) {
+    pom() {
+      name = "Elytrium Java Serializer"
+      description = "Java Library to (de-)serialize data in various formats (e.g. JSON, YAML)"
+      url = "https://github.com/Elytrium/java-serializer"
+      licenses() {
+        license() {
+          name = "GNU Lesser General Public License v3.0"
+          url = "https://www.gnu.org/licenses/lgpl-3.0.en.html"
         }
-
-        setName("elytrium-repo")
-        setUrl("https://maven.elytrium.net/repo/")
       }
-      maven {
-        credentials {
-          setUsername(System.getenv("ELYTRIUM_OSSRH_USERNAME"))
-          setPassword(System.getenv("ELYTRIUM_OSSRH_PASSWORD"))
+      developers() {
+        developer() {
+          id = "hevav"
+          name = "Petr Ilin"
+          email = "p.ilin@elytrium.ru"
         }
-
-        setName("ossrh-repo")
-        setUrl("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+      }
+      scm() {
+        connection = "scm:git:git://github.com/Elytrium/java-serializer.git"
+        developerConnection = "scm:git:ssh://github.com/Elytrium/java-serializer.git"
+        url = "https://github.com/Elytrium/java-serializer"
       }
     }
 
-    publications {
-      maven(MavenPublication) {
-        pom {
-          setName('Elytrium Java Serializer')
-          setDescription('Java Library to (de-)serialize data in various formats (e.g. JSON, YAML)')
-          setUrl('https://github.com/Elytrium/java-serializer')
-          licenses {
-            license {
-              setName('GNU Lesser General Public License v3.0')
-              setUrl('https://www.gnu.org/licenses/lgpl-3.0.en.html')
-            }
-          }
-          developers {
-            developer {
-              setId('hevav')
-              setName('Petr Ilin')
-              setEmail('p.ilin@elytrium.ru')
-            }
-          }
-          scm {
-            setConnection('scm:git:git://https://github.com/Elytrium/java-serializer.git')
-            setDeveloperConnection('scm:git:ssh://https://github.com/Elytrium/java-serializer.git')
-            setUrl('https://https://github.com/Elytrium/java-serializer')
-          }
-        }
-
-        artifact(javadocJar)
-        artifact(sourcesJar)
-        artifact(jar)
-      }
-    }
+    artifact(sourcesJar)
+    artifact(javadocJar)
+    artifact(jar)
   }
+}
 
-  javadoc {
-    getOptions().setEncoding("UTF-8")
-    getOptions().setCharSet("UTF-8")
-    getOptions().setSource("17")
-    getOptions().links("https://docs.oracle.com/en/java/javase/17/docs/api/")
-
-    // Disable the crazy super-strict DocLint tool in Java 8.
-    getOptions().addStringOption("Xdoclint:none", "-quiet")
-
-    // Remove "undefined" from search paths when generating javadoc for a non-modular project. (JDK-8215291)
-    if (JavaVersion.current() >= JavaVersion.VERSION_1_9 && JavaVersion.current() < JavaVersion.VERSION_12) {
-      getOptions().addBooleanOption("-no-module-directories", true)
-    }
-  }
-
-  artifacts {
-    archives(javadocJar)
-    archives(sourcesJar)
-    archives(jar)
-  }
-
-  signing {
-    if (hasProperty('signing.keyId')) {
-      sign(configurations.archives)
-      sign(publishing.publications.maven)
-    }
+signing() {
+  if (hasProperty("signing.keyId")) {
+    sign(publishing.publications.publication)
+    sign(configurations.archives)
   }
 }

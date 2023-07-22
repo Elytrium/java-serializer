@@ -54,6 +54,14 @@ chaos-map-list:
           other-node-seq:
             a: "value"
             b: 10
+  - 4e:
+      naJlulll:
+        - final-field: "final"
+          some-string: "some value"
+          some-integer: 1234
+          other-node-seq:
+            a: "value"
+            b: 10
 chaos-map:
   test-1:
     test-1-1:
@@ -93,9 +101,9 @@ prepend:
           - - "d"
             - "e"
             - "f" # SAME_LINE comment Line 1
-  # SAME_LINE APPEND second comment Line 1
+  # sameLine APPEND second comment Line 1
 
-  # SAME_LINE APPEND second comment Line 2
+  # sameLine APPEND second comment Line 2
 node-test:
   node-seq-map:
     1:

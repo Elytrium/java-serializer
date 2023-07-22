@@ -53,9 +53,9 @@ public abstract class AbstractWriter {
 
   public void writeSerializableObject(Object value, Class<?> clazz) {
     synchronized (this) {
-      boolean latest = false;
-      if (this.first) { // The first serializable object will be written last.
-        latest = true;
+      boolean first = false;
+      if (this.first) {
+        first = true;
         this.first = false;
       }
 
@@ -100,22 +100,21 @@ public abstract class AbstractWriter {
         this.writeEndMap();
       }
 
-      if (latest) {
+      if (first) {
         this.writeLine();
       }
     }
   }
 
   private Object serializeValue(Object nodeValue) {
-    ClassSerializer<?, ?> classSerializer = this.config.getRegisteredSerializer(nodeValue.getClass());
-    while (classSerializer != null) {
+    ClassSerializer<?, ?> classSerializer;
+    while ((classSerializer = this.config.getRegisteredSerializer(nodeValue.getClass())) != null) {
       nodeValue = classSerializer.serializeRaw(nodeValue);
       if (classSerializer.getToType() == classSerializer.getFromType()) {
         break;
       }
-
-      classSerializer = this.config.getRegisteredSerializer(nodeValue.getClass());
     }
+
     return nodeValue;
   }
 
@@ -184,7 +183,6 @@ public abstract class AbstractWriter {
         this.writeRaw("null");
       } else {
         value = this.serializeValue(value);
-
         if (value instanceof Map) {
           this.writeMap((Map<Object, Object>) value, comments);
         } else if (value instanceof List) {

@@ -28,20 +28,26 @@ import net.elytrium.serializer.placeholders.PlaceholderReplacer;
 
 public class SerializerConfig {
 
-  public static final SerializerConfig DEFAULT = new SerializerConfig(new HashMap<>(), NameStyle.CAMEL_CASE,
-      NameStyle.KEBAB_CASE, false, false, System.lineSeparator());
+  public static final SerializerConfig DEFAULT = new SerializerConfig(
+      new HashMap<>(),
+      NameStyle.CAMEL_CASE,
+      NameStyle.KEBAB_CASE,
+      false,
+      false,
+      System.lineSeparator()
+  );
 
   private final Map<Class<? extends ClassSerializer<?, ?>>, ClassSerializer<?, ?>> cachedSerializers = new HashMap<>();
-  private final Map<Class<?>, ClassSerializer<?, ?>> registeredSerializers;
   private final Map<Class<? extends PlaceholderReplacer<?>>, PlaceholderReplacer<?>> cachedReplacers = new HashMap<>();
+  private final Map<Class<?>, ClassSerializer<?, ?>> registeredSerializers;
   private final NameStyle fieldNameStyle;
   private final NameStyle nodeNameStyle;
   private final boolean safeMode;
   private final boolean allowUnicode;
   private final String lineSeparator;
 
-  private SerializerConfig(Map<Class<?>, ClassSerializer<?, ?>> registeredSerializers, NameStyle fieldNameStyle,
-                           NameStyle nodeNameStyle, boolean safeMode, boolean allowUnicode, String lineSeparator) {
+  private SerializerConfig(Map<Class<?>, ClassSerializer<?, ?>> registeredSerializers,
+      NameStyle fieldNameStyle, NameStyle nodeNameStyle, boolean safeMode, boolean allowUnicode, String lineSeparator) {
     this.registeredSerializers = registeredSerializers;
     this.fieldNameStyle = fieldNameStyle;
     this.nodeNameStyle = nodeNameStyle;
@@ -108,6 +114,10 @@ public class SerializerConfig {
     return this.registeredSerializers.get(to);
   }
 
+  public int getRegisteredSerializers() {
+    return this.cachedSerializers.size() + this.registeredSerializers.size();
+  }
+
   public boolean isSafeMode() {
     return this.safeMode;
   }
@@ -128,7 +138,7 @@ public class SerializerConfig {
     private NameStyle nodeNameStyle = NameStyle.KEBAB_CASE;
     private boolean safeMode = false;
     private boolean allowUnicode = false;
-    private String lineSeparator = "\n";
+    private String lineSeparator = System.lineSeparator();
 
     public Builder registerSerializer(ClassSerializer<?, ?> serializer) {
       this.registeredSerializers.put(serializer.getToType(), serializer);
@@ -160,19 +170,25 @@ public class SerializerConfig {
       return this;
     }
 
-    public Builder setLineSeparator(String lineSeparator) {
-      this.lineSeparator = lineSeparator;
-      return this;
-    }
-
     public Builder setAllowUnicode(boolean allowUnicode) {
       this.allowUnicode = allowUnicode;
       return this;
     }
 
+    public Builder setLineSeparator(String lineSeparator) {
+      this.lineSeparator = lineSeparator;
+      return this;
+    }
+
     public SerializerConfig build() {
-      return new SerializerConfig(this.registeredSerializers, this.fieldNameStyle, this.nodeNameStyle,
-          this.safeMode, this.allowUnicode, this.lineSeparator);
+      return new SerializerConfig(
+          this.registeredSerializers,
+          this.fieldNameStyle,
+          this.nodeNameStyle,
+          this.safeMode,
+          this.allowUnicode,
+          this.lineSeparator
+      );
     }
   }
 }

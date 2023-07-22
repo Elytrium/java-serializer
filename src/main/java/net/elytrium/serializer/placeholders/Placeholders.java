@@ -26,18 +26,12 @@ import java.util.stream.Stream;
 
 public class Placeholders {
 
-  private static final Matcher EXACTLY_MATCHES = Pattern.compile("^\\{(?!_)[A-Z\\d_]+(?<!_)}$").matcher("");
-  private static final Matcher LOWERCASE = Pattern.compile("^(?!-)[a-z\\d-]+(?<!-)$").matcher("");
-  private static final Matcher UPPERCASE = Pattern.compile("^(?!_)[A-Z\\d_]+(?<!_)$").matcher("");
+  private static final Map<Integer, Placeholderable<?>> PLACEHOLDERS = new HashMap<>();
 
-  private static final Map<Integer, String[]> PLACEHOLDERS = new HashMap<>();
-  private static final Map<Integer, PlaceholderReplacer<?>> REPLACERS = new HashMap<>();
-
+  @SuppressWarnings("unchecked")
   public static <T> T replace(T value, Object... values) {
-    String[] placeholders = Placeholders.getPlaceholders(value);
-    PlaceholderReplacer<T> replacer = Placeholders.getReplacer(value);
-
-    return replacer.replace(value, placeholders, values);
+    Placeholderable<T> placeholderable = (Placeholderable<T>) Placeholders.PLACEHOLDERS.get(System.identityHashCode(value));
+    return placeholderable.replacer.replace(value, placeholderable.placeholders, values);
   }
 
   public static void addPlaceholders(Object value, PlaceholderReplacer<?> replacer, String... placeholders) {
@@ -45,16 +39,20 @@ public class Placeholders {
   }
 
   public static void addPlaceholders(int hash, PlaceholderReplacer<?> replacer, String... placeholders) {
-    PLACEHOLDERS.put(hash, Stream.of(placeholders).map(Placeholders::toPlaceholderName).toArray(String[]::new));
-    REPLACERS.put(hash, replacer);
+    Placeholders.PLACEHOLDERS.put(hash, new Placeholderable<>(replacer, placeholders));
   }
 
-  public static void setPlaceholders(Object value, String... placeholders) {
-    Placeholders.setPlaceholders(System.identityHashCode(value), placeholders);
+  public static void setPlaceholders(Object value, PlaceholderReplacer<?> fallbackReplacer, String... placeholders) {
+    Placeholders.setPlaceholders(System.identityHashCode(value), fallbackReplacer, placeholders);
   }
 
-  public static void setPlaceholders(int hash, String... placeholders) {
-    PLACEHOLDERS.put(hash, Stream.of(placeholders).map(Placeholders::toPlaceholderName).toArray(String[]::new));
+  public static void setPlaceholders(int hash, PlaceholderReplacer<?> fallbackReplacer, String... placeholders) {
+    Placeholderable<?> placeholderable = Placeholders.PLACEHOLDERS.get(hash);
+    if (placeholderable == null) {
+      Placeholders.addPlaceholders(hash, fallbackReplacer, placeholders);
+    } else {
+      placeholderable.setPlaceholders(placeholders);
+    }
   }
 
   public static void removePlaceholders(Object value) {
@@ -62,8 +60,7 @@ public class Placeholders {
   }
 
   public static void removePlaceholders(int hash) {
-    PLACEHOLDERS.remove(hash);
-    REPLACERS.remove(hash);
+    Placeholders.PLACEHOLDERS.remove(hash);
   }
 
   public static boolean hasPlaceholders(Object value) {
@@ -71,7 +68,7 @@ public class Placeholders {
   }
 
   public static boolean hasPlaceholders(int hash) {
-    return PLACEHOLDERS.containsKey(hash);
+    return Placeholders.PLACEHOLDERS.containsKey(hash);
   }
 
   public static String[] getPlaceholders(Object value) {
@@ -79,11 +76,11 @@ public class Placeholders {
   }
 
   public static String[] getPlaceholders(int hash) {
-    String[] placeholders = PLACEHOLDERS.get(hash);
-    if (placeholders == null) {
-      throw new IllegalStateException("Invalid input");
+    Placeholderable<?> placeholderable = Placeholders.PLACEHOLDERS.get(hash);
+    if (placeholderable == null) {
+      throw new IllegalStateException("Invalid input!");
     } else {
-      return placeholders;
+      return placeholderable.placeholders;
     }
   }
 
@@ -93,23 +90,51 @@ public class Placeholders {
   }
 
   public static PlaceholderReplacer<?> getReplacer(int hash) {
-    PlaceholderReplacer<?> placeholders = REPLACERS.get(hash);
-    if (placeholders == null) {
-      throw new IllegalStateException("Invalid input");
+    Placeholderable<?> placeholderable = Placeholders.PLACEHOLDERS.get(hash);
+    if (placeholderable == null) {
+      throw new IllegalStateException("Invalid input!");
     } else {
-      return placeholders;
+      return placeholderable.replacer;
     }
   }
 
-  private static String toPlaceholderName(String name) {
-    if (EXACTLY_MATCHES.reset(name).matches()) {
-      return name;
-    } else if (LOWERCASE.reset(name).matches()) {
-      return '{' + name.toUpperCase(Locale.ROOT).replace('-', '_') + '}';
-    } else if (UPPERCASE.reset(name).matches()) {
-      return '{' + name + '}';
-    } else {
-      throw new IllegalStateException("Invalid placeholder: " + name);
+  private static class Placeholderable<T> {
+
+    private static final ThreadLocal<Matcher> EXACTLY_MATCHES;
+    private static final ThreadLocal<Matcher> LOWERCASE;
+    private static final ThreadLocal<Matcher> UPPERCASE;
+
+    private final PlaceholderReplacer<T> replacer;
+    private String[] placeholders;
+
+    public Placeholderable(PlaceholderReplacer<T> replacer, String[] placeholders) {
+      this.replacer = replacer;
+      this.setPlaceholders(placeholders);
+    }
+
+    public void setPlaceholders(String[] placeholders) {
+      this.placeholders = Stream.of(placeholders).map(Placeholders.Placeholderable::toPlaceholderName).toArray(String[]::new);
+    }
+
+    static {
+      Pattern exactlyMatches = Pattern.compile("^\\{(?!_)[A-Z\\d_]+(?<!_)}$");
+      EXACTLY_MATCHES = ThreadLocal.withInitial(() -> exactlyMatches.matcher(""));
+      Pattern lowercase = Pattern.compile("^(?!-)[a-z\\d-]+(?<!-)$");
+      LOWERCASE = ThreadLocal.withInitial(() -> lowercase.matcher(""));
+      Pattern uppercase = Pattern.compile("^(?!_)[A-Z\\d_]+(?<!_)$");
+      UPPERCASE = ThreadLocal.withInitial(() -> uppercase.matcher(""));
+    }
+
+    private static String toPlaceholderName(String name) {
+      if (Placeholders.Placeholderable.EXACTLY_MATCHES.get().reset(name).matches()) {
+        return name;
+      } else if (Placeholders.Placeholderable.LOWERCASE.get().reset(name).matches()) {
+        return '{' + name.toUpperCase(Locale.ROOT).replace('-', '_') + '}';
+      } else if (Placeholders.Placeholderable.UPPERCASE.get().reset(name).matches()) {
+        return '{' + name + '}';
+      } else {
+        throw new IllegalStateException("Invalid placeholder: " + name);
+      }
     }
   }
 }

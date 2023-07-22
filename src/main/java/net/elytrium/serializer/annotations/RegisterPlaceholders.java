@@ -33,5 +33,6 @@ import net.elytrium.serializer.placeholders.StringPlaceholderReplacer;
 public @interface RegisterPlaceholders {
 
   String[] value();
+
   Class<? extends PlaceholderReplacer<?>> replacer() default StringPlaceholderReplacer.class;
 }

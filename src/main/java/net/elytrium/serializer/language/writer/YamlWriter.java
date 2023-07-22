@@ -184,8 +184,8 @@ public class YamlWriter extends AbstractWriter {
 
   private boolean shouldUseQuotes(char value) {
     return value == '\0' || value == '\u0007' || value == '\b' || value == '\t' || value == '\n' || value == '\u000B'
-        || value == '\f' || value == '\r' || value == '\u001B' || (value == ' ' || value == '#'/*Not escaping, but avoiding usage without quotes.*/)
-        || value == '"' || value == '\'' || value == '\\' || value == '\u0085' || value == '\u00A0' || value == '\u2028' || value == '\u2029';
+           || value == '\f' || value == '\r' || value == '\u001B' || (value == ' ' || value == '#'/*Not escaping, but avoiding usage without quotes.*/)
+           || value == '"' || value == '\'' || value == '\\' || value == '\u0085' || value == '\u00A0' || value == '\u2028' || value == '\u2029';
   }
 
   protected void writeString0(String value, boolean nodeName) {
@@ -212,7 +212,7 @@ public class YamlWriter extends AbstractWriter {
       for (char character : characters) {
         if (highSurrogate != 0) {
           highSurrogate = 0;
-          int codePoint = Character.toCodePoint(highSurrogate, character);
+          this.writeCharacter0(Character.toCodePoint(highSurrogate, character));
         } else if (Character.isHighSurrogate(character)) {
           highSurrogate = character;
         } else {
@@ -227,6 +227,7 @@ public class YamlWriter extends AbstractWriter {
       if (shouldUseQuotes) {
         this.writeRaw('"');
       }
+
       if (nodeName) {
         this.writeRaw(':');
         this.waitingForEntryValue = true;
@@ -253,27 +254,26 @@ public class YamlWriter extends AbstractWriter {
       case '\u2029' -> this.writeRaw("\\P");
       default -> {
         if (Character.isIdentifierIgnorable(value) && !this.config.isAllowUnicode()) {
-          //noinspection UnnecessaryUnicodeEscape
           if (value <= 0xFF) {
-            String s = "0" + Integer.toString(value, 16);
+            String result = "0" + Integer.toString(value, 16);
             this.writeRaw("\\x");
-            this.writeRaw(s.substring(s.length() - 2));
+            this.writeRaw(result.substring(result.length() - 2));
             break;
           } else if (Character.charCount(value) == 2) {
-            String s = "000" + Long.toHexString(value);
+            String result = "000" + Long.toHexString(value);
             this.writeRaw("\\U");
-            this.writeRaw(s.substring(s.length() - 8));
+            this.writeRaw(result.substring(result.length() - 8));
             break;
           } else {
-            String s = "000" + Integer.toString(value, 16);
+            String result = "000" + Integer.toString(value, 16);
             this.writeRaw("\\u");
-            this.writeRaw(s.substring(s.length() - 4));
+            this.writeRaw(result.substring(result.length() - 4));
             break;
           }
         }
 
-        for (char c : Character.toChars(value)) {
-          this.writeRaw(c);
+        for (char character : Character.toChars(value)) {
+          this.writeRaw(character);
         }
       }
     }

@@ -1,1 +1,1 @@
-this.getRootProject().setName("serializer")
+this.rootProject.setName("serializer")
