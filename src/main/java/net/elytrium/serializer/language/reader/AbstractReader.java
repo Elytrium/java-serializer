@@ -19,6 +19,7 @@ package net.elytrium.serializer.language.reader;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -73,14 +74,14 @@ public abstract class AbstractReader {
     synchronized (this) {
       Type type = node.getGenericType();
       Class<?> clazz = node.getType();
-      Deque<ClassSerializer<?, ?>> serializerStack = new ArrayDeque<>(
+      Deque<ClassSerializer<?, Object>> serializerStack = new ArrayDeque<>(
           Math.min(16, this.config.getRegisteredSerializers() + 1/*If first iteration and annotation serializer not cached yet.*/)
       );
 
       Serializer serializer = node.getAnnotation(Serializer.class);
       if (serializer != null) {
         try {
-          ClassSerializer<?, ?> classSerializer = this.config.getAndCacheSerializer(serializer);
+          ClassSerializer<?, Object> classSerializer = this.config.getAndCacheSerializer(serializer);
           if (clazz.isAssignableFrom(classSerializer.getToType())) {
             serializerStack.add(classSerializer);
             type = classSerializer.getFromType();
@@ -115,9 +116,9 @@ public abstract class AbstractReader {
     }
   }
 
-  protected Class<?> fillSerializerStack(Deque<ClassSerializer<?, ?>> serializerStack, Class<?> clazz) {
+  protected Class<?> fillSerializerStack(Deque<ClassSerializer<?, Object>> serializerStack, Class<?> clazz) {
     while (true) {
-      ClassSerializer<?, ?> classSerializer = this.config.getRegisteredSerializer(clazz);
+      ClassSerializer<?, Object> classSerializer = this.config.getRegisteredSerializer(clazz);
       if (classSerializer == null || !clazz.isAssignableFrom(classSerializer.getToType())) {
         break;
       }
@@ -133,12 +134,12 @@ public abstract class AbstractReader {
     return clazz;
   }
 
-  protected Object readAndDeserializeByType(Deque<ClassSerializer<?, ?>> serializerStack, Type type) {
+  protected Object readAndDeserializeByType(Deque<ClassSerializer<?, Object>> serializerStack, Type type) {
     Object value = this.readByType(type);
     while (!serializerStack.isEmpty()) {
-      ClassSerializer<?, ?> classSerializer = serializerStack.pop();
+      ClassSerializer<?, Object> classSerializer = serializerStack.pop();
       if (classSerializer.getFromType().isInstance(value)) {
-        value = classSerializer.deserializeRaw(value);
+        value = classSerializer.deserialize(value);
       }
     }
 
@@ -180,14 +181,22 @@ public abstract class AbstractReader {
           return this.readNumber(clazz);
         } else {
           try {
-            Object result = clazz.isInstance(holder) ? holder : clazz.getDeclaredConstructor().newInstance();
+            Object result;
+            if (clazz.isInstance(holder)) {
+              result = holder;
+            } else {
+              Constructor<?> constructor = clazz.getDeclaredConstructor();
+              constructor.setAccessible(true);
+              result = constructor.newInstance();
+            }
+
             this.readSerializableObject(result, clazz);
             return result;
           } catch (ReflectiveOperationException e) {
             Object value = this.readGuessingType();
-            ClassSerializer<?, ?> classSerializer = this.config.getRegisteredSerializer(clazz);
+            ClassSerializer<?, Object> classSerializer = this.config.getRegisteredSerializer(clazz);
             if (classSerializer != null) {
-              value = classSerializer.deserializeRaw(value);
+              value = classSerializer.deserialize(value);
             }
 
             return value;
@@ -277,7 +286,7 @@ public abstract class AbstractReader {
   public abstract boolean skipComments(char marker, boolean reuse);
 
   public char readRawIgnoreEmptyAndNewLines() {
-    return this.readRawIgnoreEmptyAndCharacter(NEW_LINE);
+    return this.readRawIgnoreEmptyAndCharacter(AbstractReader.NEW_LINE);
   }
 
   public char readRawIgnoreEmptyAndCharacter(char marker) {
@@ -302,7 +311,7 @@ public abstract class AbstractReader {
     if (this.reuseBuffer) {
       this.reuseBuffer = false;
     } else {
-      if (this.seekEnabled || this.seekBuffer.size() == 0) {
+      if (this.seekEnabled || this.seekBuffer.isEmpty()) {
         try {
           if (this.reader.read(this.singleCharBuffer, 0, 1) < 1) {
             this.singleCharBuffer[0] = 0;

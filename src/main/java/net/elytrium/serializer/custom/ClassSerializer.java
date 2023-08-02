@@ -17,11 +17,24 @@
 
 package net.elytrium.serializer.custom;
 
-@SuppressWarnings("unchecked")
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+
 public abstract class ClassSerializer<T, F> {
 
   private final Class<T> toClass;
   private final Class<F> fromClass;
+
+  @SuppressWarnings("unchecked")
+  protected ClassSerializer() {
+    Type[] actualTypeArguments = ((ParameterizedType) this.getClass().getGenericSuperclass()).getActualTypeArguments();
+    this.toClass = actualTypeArguments[0] instanceof Class<?>
+        ? (Class<T>) actualTypeArguments[0]
+        : (Class<T>) ((ParameterizedType) actualTypeArguments[0]).getRawType();
+    this.fromClass = actualTypeArguments[1] instanceof Class<?>
+        ? (Class<F>) actualTypeArguments[1]
+        : (Class<F>) ((ParameterizedType) actualTypeArguments[1]).getRawType();
+  }
 
   protected ClassSerializer(Class<T> toClass, Class<F> fromClass) {
     this.toClass = toClass;
@@ -34,14 +47,6 @@ public abstract class ClassSerializer<T, F> {
 
   public T deserialize(F from) {
     throw new UnsupportedOperationException();
-  }
-
-  public Object serializeRaw(Object from) {
-    return this.serialize((T) from);
-  }
-
-  public Object deserializeRaw(Object from) {
-    return this.deserialize((F) from);
   }
 
   public Class<T> getToType() {

@@ -18,14 +18,15 @@
 package net.elytrium.serializer;
 
 import edu.umd.cs.findbugs.annotations.Nullable;
+import java.lang.reflect.Constructor;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import net.elytrium.serializer.annotations.Serializer;
 import net.elytrium.serializer.custom.ClassSerializer;
-import net.elytrium.serializer.custom.ClassSerializerCollection;
 import net.elytrium.serializer.placeholders.PlaceholderReplacer;
 
+// TODO возможность регистрировать кастомные реплейсеры конфигом
 public class SerializerConfig {
 
   public static final SerializerConfig DEFAULT = new SerializerConfig(
@@ -37,8 +38,8 @@ public class SerializerConfig {
       System.lineSeparator()
   );
 
+  private final Map<Class<? extends PlaceholderReplacer<?, ?>>, PlaceholderReplacer<?, ?>> cachedReplacers = new HashMap<>();
   private final Map<Class<? extends ClassSerializer<?, ?>>, ClassSerializer<?, ?>> cachedSerializers = new HashMap<>();
-  private final Map<Class<? extends PlaceholderReplacer<?>>, PlaceholderReplacer<?>> cachedReplacers = new HashMap<>();
   private final Map<Class<?>, ClassSerializer<?, ?>> registeredSerializers;
   private final NameStyle fieldNameStyle;
   private final NameStyle nodeNameStyle;
@@ -72,34 +73,40 @@ public class SerializerConfig {
     return this.fieldNameStyle == this.nodeNameStyle ? field : this.fieldNameStyle.fromMacroCase(this.nodeNameStyle.toMacroCase(field));
   }
 
-  public ClassSerializer<?, ?> getAndCacheSerializer(Serializer serializer) throws ReflectiveOperationException {
-    Class<? extends ClassSerializer<?, ?>> serializerClass = serializer.value();
-    ClassSerializer<?, ?> configSerializer = this.cachedSerializers.get(serializerClass);
-    if (configSerializer == null) {
-      configSerializer = serializerClass.getDeclaredConstructor().newInstance();
-      this.cachedSerializers.put(serializerClass, configSerializer);
-    }
-
-    return configSerializer;
-  }
-
-  public PlaceholderReplacer<?> getAndCacheReplacer(Class<? extends PlaceholderReplacer<?>> replacerClass) throws ReflectiveOperationException {
-    PlaceholderReplacer<?> replacer = this.cachedReplacers.get(replacerClass);
+  public PlaceholderReplacer<?, ?> getAndCacheReplacer(Class<? extends PlaceholderReplacer<?, ?>> replacerClass) throws ReflectiveOperationException {
+    PlaceholderReplacer<?, ?> replacer = this.cachedReplacers.get(replacerClass);
     if (replacer == null) {
-      replacer = replacerClass.getDeclaredConstructor().newInstance();
+      Constructor<? extends PlaceholderReplacer<?, ?>> constructor = replacerClass.getDeclaredConstructor();
+      constructor.setAccessible(true);
+      replacer = constructor.newInstance();
       this.cachedReplacers.put(replacerClass, replacer);
     }
 
     return replacer;
   }
 
+  @SuppressWarnings("unchecked")
+  public <T, F> ClassSerializer<T, F> getAndCacheSerializer(Serializer serializer) throws ReflectiveOperationException {
+    Class<? extends ClassSerializer<?, ?>> serializerClass = serializer.value();
+    var configSerializer = (ClassSerializer<T, F>) this.cachedSerializers.get(serializerClass);
+    if (configSerializer == null) {
+      Constructor<? extends ClassSerializer<?, ?>> constructor = serializerClass.getDeclaredConstructor();
+      constructor.setAccessible(true);
+      configSerializer = (ClassSerializer<T, F>) constructor.newInstance();
+      this.cachedSerializers.put(serializerClass, configSerializer);
+    }
+
+    return configSerializer;
+  }
+
   @Nullable
-  public ClassSerializer<?, ?> getRegisteredSerializer(Class<?> to) {
+  @SuppressWarnings("unchecked")
+  public <T, F> ClassSerializer<T, F> getRegisteredSerializer(Class<?> to) {
     while (to != null && to != Object.class) {
-      ClassSerializer<?, ?> serializer = this.registeredSerializers.get(to);
+      ClassSerializer<T, F> serializer = (ClassSerializer<T, F>) this.registeredSerializers.get(to);
       if (serializer == null) {
         for (Class<?> classInterface : to.getInterfaces()) {
-          serializer = this.registeredSerializers.get(classInterface);
+          serializer = (ClassSerializer<T, F>) this.registeredSerializers.get(classInterface);
           if (serializer != null) {
             return serializer;
           }
@@ -111,7 +118,7 @@ public class SerializerConfig {
       }
     }
 
-    return this.registeredSerializers.get(to);
+    return (ClassSerializer<T, F>) this.registeredSerializers.get(to);
   }
 
   public int getRegisteredSerializers() {
@@ -142,11 +149,6 @@ public class SerializerConfig {
 
     public Builder registerSerializer(ClassSerializer<?, ?> serializer) {
       this.registeredSerializers.put(serializer.getToType(), serializer);
-      return this;
-    }
-
-    public Builder registerSerializer(ClassSerializerCollection serializers) {
-      serializers.serializers().forEach(serializer -> this.registeredSerializers.put(serializer.getToType(), serializer));
       return this;
     }
 

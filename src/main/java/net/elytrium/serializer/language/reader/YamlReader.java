@@ -61,33 +61,51 @@ public class YamlReader extends AbstractReader {
   public void readSerializableObject(Object holder, Class<?> clazz) {
     synchronized (this) {
       this.readBeginSerializableObject();
-      Field[] fields = clazz.getFields();
+      Field[] fields = clazz.getDeclaredFields();
       if (fields.length != 0) {
         try {
+          // Register initial values.
+          for (Field field : fields) {
+            try {
+              field.setAccessible(true);
+            } catch (Exception e) {
+              continue;
+            }
+
+            RegisterPlaceholders placeholders = field.getAnnotation(RegisterPlaceholders.class);
+            if (placeholders != null) {
+              Placeholders.addPlaceholders(field.get(holder), this.config.getAndCacheReplacer(placeholders.replacer()), placeholders.value());
+            }
+          }
+
           int correctIndent = this.currentIndent;
           String nodeName;
           while (correctIndent == this.currentIndent && (nodeName = this.readNodeName()) != null) {
             try {
-              Field node = clazz.getField(this.config.toFieldName(nodeName));
-              Placeholders.removePlaceholders(node.get(holder));
+              Field node = clazz.getDeclaredField(this.config.toFieldName(nodeName));
+              try {
+                node.setAccessible(true);
+              } catch (Exception e) {
+                this.skipGuessingType();
+                continue;
+              }
+
               int modifiers = node.getModifiers();
               if (!Modifier.isStatic(modifiers) && !Modifier.isFinal(modifiers) && !Modifier.isTransient(modifiers)
                   && node.getAnnotation(Final.class) == null && node.getType().getAnnotation(Final.class) == null
                   && node.getAnnotation(Transient.class) == null && node.getType().getAnnotation(Transient.class) == null) {
+                Placeholders.removePlaceholders(node.get(holder));
                 this.readNode(holder, node);
+                RegisterPlaceholders placeholders = node.getAnnotation(RegisterPlaceholders.class);
+                if (placeholders != null) {
+                  Placeholders.addPlaceholders(node.get(holder), this.config.getAndCacheReplacer(placeholders.replacer()), placeholders.value());
+                }
               } else {
                 this.skipNode(node);
               }
-            } catch (NoSuchFieldException e) {
+            } catch (ReflectiveOperationException e) {
               this.skipGuessingType();
               YamlReader.LOGGER.log(Level.WARNING, "Skipping field due to exception caught", e);
-            }
-
-            for (Field field : fields) {
-              RegisterPlaceholders placeholders = field.getAnnotation(RegisterPlaceholders.class);
-              if (placeholders != null) {
-                Placeholders.addPlaceholders(field.get(holder), this.config.getAndCacheReplacer(placeholders.replacer()), placeholders.value());
-              }
             }
 
             this.readSerializableObjectEntryJoin();
@@ -201,6 +219,7 @@ public class YamlReader extends AbstractReader {
   private int readHexChar(int size) {
     StringBuilder hex = new StringBuilder();
     for (int i = 0; i < size; ++i) {
+      // TODO read until new line and throw exception if not enough chars was read
       hex.append(this.readRaw());
     }
 
@@ -348,6 +367,7 @@ public class YamlReader extends AbstractReader {
           this.readMapEntry(keyType, valueType, this.readNodeNameByMarker(nextMarker), result);
           nextMarker = this.readRawIgnoreEmptyAndNewLines();
         }
+
         this.bracketOpened = previousBracketOpened;
       }
       case AbstractReader.NEW_LINE -> {
@@ -416,7 +436,7 @@ public class YamlReader extends AbstractReader {
           throw new IllegalStateException("Number " + keyClazz + " for map key are not supported yet!");
         }
       } else {
-        Deque<ClassSerializer<?, ?>> serializerStack = new ArrayDeque<>(
+        Deque<ClassSerializer<?, Object>> serializerStack = new ArrayDeque<>(
             Math.min(16, this.config.getRegisteredSerializers() + 1/*See AbstractReader#readNode*/)
         );
         Class<?> clazz = this.fillSerializerStack(serializerStack, keyClazz);

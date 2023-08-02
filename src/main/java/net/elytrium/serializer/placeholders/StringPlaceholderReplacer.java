@@ -17,7 +17,7 @@
 
 package net.elytrium.serializer.placeholders;
 
-public class StringPlaceholderReplacer implements PlaceholderReplacer<String> {
+public class StringPlaceholderReplacer implements PlaceholderReplacer<String, String> {
 
   @Override
   public String replace(String value, String[] placeholders, Object... values) {
@@ -49,7 +49,7 @@ public class StringPlaceholderReplacer implements PlaceholderReplacer<String> {
     // index of replace array that will replace the search string found
     // NOTE: logic duplicated below START
     for (int i = 0; i < searchLength; ++i) {
-      if (noMoreMatchesForReplIndex[i] || searchList[i] == null || searchList[i].isEmpty() || replacementList[i] == null) {
+      if (noMoreMatchesForReplIndex[i]) {
         continue;
       }
 
@@ -77,12 +77,9 @@ public class StringPlaceholderReplacer implements PlaceholderReplacer<String> {
 
     // count the replacement text elements that are larger than their corresponding text being replaced
     for (int i = 0; i < searchList.length; ++i) {
-      if (searchList[i] == null || replacementList[i] == null) {
-        continue;
-      }
-
+      // Make sure all arguments are strings.
       if (!(replacementList[i] instanceof String)) {
-        replacementList[i] = replacementList[i].toString();
+        replacementList[i] = String.valueOf(replacementList[i]); // Using String.valueOf() instead of toString() allows the array to contain null.
       }
 
       final int greater = ((String) replacementList[i]).length() - searchList[i].length();
@@ -100,7 +97,7 @@ public class StringPlaceholderReplacer implements PlaceholderReplacer<String> {
         buf.append(text.charAt(i));
       }
 
-      buf.append(replacementList[replaceIndex]);
+      buf.append((String) replacementList[replaceIndex]);
 
       start = textIndex + searchList[replaceIndex].length();
 
@@ -109,7 +106,7 @@ public class StringPlaceholderReplacer implements PlaceholderReplacer<String> {
       // find the next earliest match
       // NOTE: logic mostly duplicated above START
       for (int i = 0; i < searchLength; i++) {
-        if (noMoreMatchesForReplIndex[i] || searchList[i] == null || searchList[i].isEmpty() || replacementList[i] == null) {
+        if (noMoreMatchesForReplIndex[i]) {
           continue;
         }
 

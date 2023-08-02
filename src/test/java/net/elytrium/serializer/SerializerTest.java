@@ -494,7 +494,7 @@ class SerializerTest {
   public static class ExternalClassSerializer extends ClassSerializer<ExternalDeserializedClass, Map<String, Object>> {
 
     @SuppressWarnings("unchecked")
-    protected ExternalClassSerializer() {
+    public ExternalClassSerializer() {
       super(ExternalDeserializedClass.class, (Class<Map<String, Object>>) (Class<?>) Map.class);
     }
 

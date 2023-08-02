@@ -17,6 +17,12 @@
 
 package net.elytrium.serializer.annotations;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Target({})
+@Retention(RetentionPolicy.SOURCE)
 public @interface CommentValue {
 
   String value() default "";

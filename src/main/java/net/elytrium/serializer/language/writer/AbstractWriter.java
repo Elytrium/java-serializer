@@ -59,7 +59,7 @@ public abstract class AbstractWriter {
         this.first = false;
       }
 
-      Field[] fields = clazz.getFields();
+      Field[] fields = clazz.getDeclaredFields();
       if (fields.length == 0) {
         this.writeEmptyMap();
       } else {
@@ -70,6 +70,12 @@ public abstract class AbstractWriter {
           int modifiers = field.getModifiers();
           if (!Modifier.isStatic(modifiers) && !Modifier.isTransient(modifiers)
               && field.getAnnotation(Transient.class) == null && field.getType().getAnnotation(Transient.class) == null) {
+            try {
+              field.setAccessible(true);
+            } catch (Exception e) {
+              continue;
+            }
+
             try {
               NewLine newLines = field.getAnnotation(NewLine.class);
               if (newLines != null) {
@@ -83,7 +89,7 @@ public abstract class AbstractWriter {
               Object nodeValue = field.get(value);
               Serializer serializer = field.getAnnotation(Serializer.class);
               if (serializer != null) {
-                nodeValue = this.config.getAndCacheSerializer(serializer).serializeRaw(nodeValue);
+                nodeValue = this.config.getAndCacheSerializer(serializer).serialize(nodeValue);
               }
 
               if (nodeValue != null) {
@@ -107,9 +113,9 @@ public abstract class AbstractWriter {
   }
 
   private Object serializeValue(Object nodeValue) {
-    ClassSerializer<?, ?> classSerializer;
+    ClassSerializer<Object, ?> classSerializer;
     while ((classSerializer = this.config.getRegisteredSerializer(nodeValue.getClass())) != null) {
-      nodeValue = classSerializer.serializeRaw(nodeValue);
+      nodeValue = classSerializer.serialize(nodeValue);
       if (classSerializer.getToType() == classSerializer.getFromType()) {
         break;
       }
@@ -204,7 +210,7 @@ public abstract class AbstractWriter {
 
   public void writeMap(Map<Object, Object> value, Comment[] comments) {
     synchronized (this) {
-      if (value.size() == 0) {
+      if (value.isEmpty()) {
         this.writeEmptyMap();
         this.writeComments(comments, Comment.At.SAME_LINE, true);
       } else {
@@ -237,7 +243,7 @@ public abstract class AbstractWriter {
 
   public void writeList(List<Object> value, Comment[] comments) {
     synchronized (this) {
-      if (value.size() == 0) {
+      if (value.isEmpty()) {
         this.writeEmptyList();
         this.writeComments(comments, Comment.At.SAME_LINE, true);
       } else {

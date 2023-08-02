@@ -17,7 +17,12 @@
 
 package net.elytrium.serializer.placeholders;
 
-public interface PlaceholderReplacer<T> {
+@SuppressWarnings("unchecked")
+public interface PlaceholderReplacer<T, P> {
 
-  T replace(T value, String[] placeholders, Object... values);
+  T replace(T value, P[] placeholders, Object... values);
+
+  default P transformPlaceholder(String placeholder) {
+    return (P) placeholder;
+  }
 }

@@ -17,6 +17,7 @@
 
 package net.elytrium.serializer.annotations;
 
+import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -28,11 +29,12 @@ import net.elytrium.serializer.placeholders.StringPlaceholderReplacer;
 /**
  * Register placeholders, to use {@link Placeholders#replace(Object, Object...)} later.
  */
+@Documented
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface RegisterPlaceholders {
 
   String[] value();
 
-  Class<? extends PlaceholderReplacer<?>> replacer() default StringPlaceholderReplacer.class;
+  Class<? extends PlaceholderReplacer<?, ?>> replacer() default StringPlaceholderReplacer.class;
 }

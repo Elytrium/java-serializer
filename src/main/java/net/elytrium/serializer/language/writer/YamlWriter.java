@@ -188,9 +188,14 @@ public class YamlWriter extends AbstractWriter {
            || value == '"' || value == '\'' || value == '\\' || value == '\u0085' || value == '\u00A0' || value == '\u2028' || value == '\u2029';
   }
 
-  protected void writeString0(String value, boolean nodeName) {
+  private void writeString0(String value, boolean nodeName) {
     if (value.isEmpty()) {
-      this.writeRaw("\"\"");
+      if (nodeName) {
+        this.writeRaw("\"\":");
+        this.waitingForEntryValue = true;
+      } else {
+        this.writeRaw("\"\"");
+      }
     } else {
       char[] characters = value.toCharArray();
       boolean shouldUseQuotes = false;
@@ -204,6 +209,7 @@ public class YamlWriter extends AbstractWriter {
       } else {
         shouldUseQuotes = true;
       }
+
       if (shouldUseQuotes) {
         this.writeRaw('"');
       }
@@ -255,18 +261,18 @@ public class YamlWriter extends AbstractWriter {
       default -> {
         if (Character.isIdentifierIgnorable(value) && !this.config.isAllowUnicode()) {
           if (value <= 0xFF) {
-            String result = "0" + Integer.toString(value, 16);
             this.writeRaw("\\x");
+            String result = "0" + Integer.toString(value, 16);
             this.writeRaw(result.substring(result.length() - 2));
             break;
           } else if (Character.charCount(value) == 2) {
-            String result = "000" + Long.toHexString(value);
             this.writeRaw("\\U");
+            String result = "000" + Long.toHexString(value);
             this.writeRaw(result.substring(result.length() - 8));
             break;
           } else {
-            String result = "000" + Integer.toString(value, 16);
             this.writeRaw("\\u");
+            String result = "000" + Integer.toString(value, 16);
             this.writeRaw(result.substring(result.length() - 4));
             break;
           }

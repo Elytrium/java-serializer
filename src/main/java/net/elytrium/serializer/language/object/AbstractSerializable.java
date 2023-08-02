@@ -17,6 +17,7 @@
 
 package net.elytrium.serializer.language.object;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -80,8 +81,10 @@ public abstract class AbstractSerializable {
     this.getReader(reader).readSerializableObject(this, this.getClass());
   }
 
+  @SuppressFBWarnings("NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE")
   public void save(Path path) {
     try {
+      Files.createDirectories(path.getParent());
       this.save(Files.newBufferedWriter(path));
     } catch (IOException e) {
       throw new SerializableWriteException(e);

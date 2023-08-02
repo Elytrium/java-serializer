@@ -17,6 +17,9 @@
 
 package net.elytrium.serializer.placeholders;
 
+import java.lang.reflect.Array;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -24,32 +27,34 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+@SuppressWarnings("unchecked")
 public class Placeholders {
 
-  private static final Map<Integer, Placeholderable<?>> PLACEHOLDERS = new HashMap<>();
+  private static final Map<Integer, Placeholderable<?, ?>> PLACEHOLDERS = new HashMap<>();
 
-  @SuppressWarnings("unchecked")
-  public static <T> T replace(T value, Object... values) {
-    Placeholderable<T> placeholderable = (Placeholderable<T>) Placeholders.PLACEHOLDERS.get(System.identityHashCode(value));
+  public static <T, P> T replace(T value, Object... values) {
+    var placeholderable = (Placeholderable<T, P>) Placeholders.PLACEHOLDERS.get(System.identityHashCode(value));
     return placeholderable.replacer.replace(value, placeholderable.placeholders, values);
   }
 
-  public static void addPlaceholders(Object value, PlaceholderReplacer<?> replacer, String... placeholders) {
+  public static void addPlaceholders(Object value, PlaceholderReplacer<?, ?> replacer, String... placeholders) {
     Placeholders.addPlaceholders(System.identityHashCode(value), replacer, placeholders);
   }
 
-  public static void addPlaceholders(int hash, PlaceholderReplacer<?> replacer, String... placeholders) {
+  public static void addPlaceholders(int hash, PlaceholderReplacer<?, ?> replacer, String... placeholders) {
     Placeholders.PLACEHOLDERS.put(hash, new Placeholderable<>(replacer, placeholders));
   }
 
-  public static void setPlaceholders(Object value, PlaceholderReplacer<?> fallbackReplacer, String... placeholders) {
+  public static void setPlaceholders(Object value, PlaceholderReplacer<?, ?> fallbackReplacer, String... placeholders) {
     Placeholders.setPlaceholders(System.identityHashCode(value), fallbackReplacer, placeholders);
   }
 
-  public static void setPlaceholders(int hash, PlaceholderReplacer<?> fallbackReplacer, String... placeholders) {
-    Placeholderable<?> placeholderable = Placeholders.PLACEHOLDERS.get(hash);
+  public static void setPlaceholders(int hash, PlaceholderReplacer<?, ?> fallbackReplacer, String... placeholders) {
+    Placeholderable<?, ?> placeholderable = Placeholders.PLACEHOLDERS.get(hash);
     if (placeholderable == null) {
-      Placeholders.addPlaceholders(hash, fallbackReplacer, placeholders);
+      if (fallbackReplacer != null) {
+        Placeholders.addPlaceholders(hash, fallbackReplacer, placeholders);
+      }
     } else {
       placeholderable.setPlaceholders(placeholders);
     }
@@ -71,12 +76,12 @@ public class Placeholders {
     return Placeholders.PLACEHOLDERS.containsKey(hash);
   }
 
-  public static String[] getPlaceholders(Object value) {
+  public static <P> P[] getPlaceholders(Object value) {
     return Placeholders.getPlaceholders(System.identityHashCode(value));
   }
 
-  public static String[] getPlaceholders(int hash) {
-    Placeholderable<?> placeholderable = Placeholders.PLACEHOLDERS.get(hash);
+  public static <P> P[] getPlaceholders(int hash) {
+    var placeholderable = (Placeholderable<?, P>) Placeholders.PLACEHOLDERS.get(hash);
     if (placeholderable == null) {
       throw new IllegalStateException("Invalid input!");
     } else {
@@ -84,13 +89,13 @@ public class Placeholders {
     }
   }
 
-  @SuppressWarnings("unchecked")
-  public static <T> PlaceholderReplacer<T> getReplacer(T value) {
-    return (PlaceholderReplacer<T>) Placeholders.getReplacer(System.identityHashCode(value));
+  public static <T> PlaceholderReplacer<T, ?> getReplacer(T value) {
+    return Placeholders.getReplacer(System.identityHashCode(value));
   }
 
-  public static PlaceholderReplacer<?> getReplacer(int hash) {
-    Placeholderable<?> placeholderable = Placeholders.PLACEHOLDERS.get(hash);
+  @SuppressWarnings("unchecked")
+  public static <T> PlaceholderReplacer<T, ?> getReplacer(int hash) {
+    var placeholderable = (Placeholderable<T, ?>) Placeholders.PLACEHOLDERS.get(hash);
     if (placeholderable == null) {
       throw new IllegalStateException("Invalid input!");
     } else {
@@ -98,22 +103,38 @@ public class Placeholders {
     }
   }
 
-  private static class Placeholderable<T> {
+  private static class Placeholderable<T, P> {
 
     private static final ThreadLocal<Matcher> EXACTLY_MATCHES;
     private static final ThreadLocal<Matcher> LOWERCASE;
     private static final ThreadLocal<Matcher> UPPERCASE;
 
-    private final PlaceholderReplacer<T> replacer;
-    private String[] placeholders;
+    private final PlaceholderReplacer<T, P> replacer;
+    private final Class<P> placeholdersClass;
+    private P[] placeholders;
 
-    public Placeholderable(PlaceholderReplacer<T> replacer, String[] placeholders) {
+    private Placeholderable(PlaceholderReplacer<T, P> replacer, String[] placeholders) {
       this.replacer = replacer;
+      this.placeholdersClass = this.determinePlaceholdersClass();
       this.setPlaceholders(placeholders);
     }
 
-    public void setPlaceholders(String[] placeholders) {
-      this.placeholders = Stream.of(placeholders).map(Placeholders.Placeholderable::toPlaceholderName).toArray(String[]::new);
+    // https://cdn.discordapp.com/attachments/593589868777439233/1135283936726106153/3.png
+    private Class<P> determinePlaceholdersClass() {
+      for (Type interfaceType : this.replacer.getClass().getGenericInterfaces()) {
+        if (interfaceType instanceof ParameterizedType type && type.getRawType() == PlaceholderReplacer.class) {
+          Type placeholderType = type.getActualTypeArguments()[1];
+          return placeholderType instanceof Class<?> clazz ? (Class<P>) clazz : (Class<P>) ((ParameterizedType) placeholderType).getRawType();
+        }
+      }
+
+      throw new IllegalStateException();
+    }
+
+    private void setPlaceholders(String[] placeholders) {
+      this.placeholders = Stream.of(placeholders)
+          .map(placeholder -> this.replacer.transformPlaceholder(Placeholders.Placeholderable.toPlaceholderName(placeholder)))
+          .toArray(length -> (P[]) Array.newInstance(this.placeholdersClass, length));
     }
 
     static {

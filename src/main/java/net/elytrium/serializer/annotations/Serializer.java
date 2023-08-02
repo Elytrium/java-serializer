@@ -17,6 +17,7 @@
 
 package net.elytrium.serializer.annotations;
 
+import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -26,6 +27,7 @@ import net.elytrium.serializer.custom.ClassSerializer;
 /**
  * Allows to (de-)serialize custom types.
  */
+@Documented
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Serializer {
