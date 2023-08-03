@@ -1,12 +1,12 @@
 plugins() {
   id("java-library")
 
-  id("signing")
-  id("maven-publish")
-
   id("checkstyle")
   id("com.github.spotbugs").version("5.0.14")
   id("org.cadixdev.licenser").version("0.6.1")
+
+  id("signing")
+  id("maven-publish")
 }
 
 this.group = "net.elytrium"
@@ -48,12 +48,10 @@ checkstyle() {
 }
 
 spotbugsMain() {
-  reports() {
-    html() {
-      required = true
-      outputLocation = file("$buildDir/reports/spotbugs/main/spotbugs.html")
-      stylesheet = "fancy-hist.xsl"
-    }
+  reports.register("html") {
+    required = true
+    outputLocation.fileValue(file("$buildDir/reports/spotbugs/main/spotbugs.html"))
+    stylesheet = "fancy-hist.xsl"
   }
 }
 
