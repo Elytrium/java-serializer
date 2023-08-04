@@ -10,7 +10,7 @@ plugins() {
 }
 
 this.group = "net.elytrium"
-this.version = "1.0.1-SNAPSHOT"
+this.version = "1.0.1"
 
 compileJava() {
   sourceCompatibility = "19"
