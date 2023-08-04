@@ -41,8 +41,8 @@ import net.elytrium.serializer.annotations.Serializer;
 import net.elytrium.serializer.custom.ClassSerializer;
 import net.elytrium.serializer.language.object.YamlSerializable;
 import net.elytrium.serializer.language.writer.YamlWriter;
-import net.elytrium.serializer.placeholders.Placeholders;
 import net.elytrium.serializer.placeholders.DefaultPlaceholderReplacer;
+import net.elytrium.serializer.placeholders.Placeholders;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
