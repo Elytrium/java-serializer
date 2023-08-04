@@ -24,10 +24,12 @@ import java.lang.reflect.Modifier;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 import net.elytrium.serializer.SerializerConfig;
 import net.elytrium.serializer.annotations.Comment;
 import net.elytrium.serializer.annotations.CommentValue;
 import net.elytrium.serializer.annotations.NewLine;
+import net.elytrium.serializer.annotations.OverrideNameStyle;
 import net.elytrium.serializer.annotations.Serializer;
 import net.elytrium.serializer.annotations.Transient;
 import net.elytrium.serializer.custom.ClassSerializer;
@@ -78,6 +80,10 @@ public abstract class AbstractWriter {
 
             try {
               NewLine newLines = field.getAnnotation(NewLine.class);
+              if (newLines == null) {
+                newLines = field.getType().getAnnotation(NewLine.class);
+              }
+
               if (newLines != null) {
                 for (int i = newLines.amount() - 1; i >= 1; --i) {
                   this.writeRaw(this.config.getLineSeparator());
@@ -88,6 +94,10 @@ public abstract class AbstractWriter {
 
               Object nodeValue = field.get(value);
               Serializer serializer = field.getAnnotation(Serializer.class);
+              if (serializer == null) {
+                serializer = field.getType().getAnnotation(Serializer.class);
+              }
+
               if (serializer != null) {
                 nodeValue = this.config.getAndCacheSerializer(serializer).serialize(nodeValue);
               }
@@ -96,7 +106,20 @@ public abstract class AbstractWriter {
                 nodeValue = this.serializeValue(nodeValue);
               }
 
-              this.writeMapEntry(this.config.toNodeName(field.getName()), nodeValue, counter != fields.length, field.getAnnotationsByType(Comment.class));
+              OverrideNameStyle overrideNameStyle = field.getAnnotation(OverrideNameStyle.class);
+              if (overrideNameStyle == null) {
+                overrideNameStyle = field.getType().getAnnotation(OverrideNameStyle.class);
+              }
+
+              String nodeName = overrideNameStyle != null
+                  ? this.config.toNodeName(field.getName(), overrideNameStyle.field(), overrideNameStyle.node())
+                  : this.config.toNodeName(field.getName());
+
+              Comment[] comments = Stream.of(field.getType().getAnnotationsByType(Comment.class), field.getAnnotationsByType(Comment.class))
+                  .flatMap(Stream::of)
+                  .toArray(Comment[]::new);
+
+              this.writeMapEntry(nodeName, nodeValue, counter != fields.length, comments);
             } catch (ReflectiveOperationException e) {
               throw new ReflectionException(e);
             }

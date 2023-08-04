@@ -28,7 +28,7 @@ import java.lang.annotation.Target;
  * Creates a comment.
  */
 @Documented
-@Target(ElementType.FIELD)
+@Target({ElementType.FIELD, ElementType.TYPE})
 @Repeatable(CommentsHolder.class)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Comment {

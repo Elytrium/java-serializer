@@ -71,10 +71,11 @@ chaos-map:
   test-2:
     test-2-1:
       - "element"
+# PREPEND class comment
 # PREPEND comment Line 1
 # PREPEND comment Line 2
-prepend:
-  string-field: "string value"
+PREPEND:
+  STRING-FIELD: "string value"
 
   field-with-comment-at-same-line: "string value" # fieldWithCommentAtSameLine comment # You can still see this comment, but why do you need this?
 

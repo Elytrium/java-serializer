@@ -60,14 +60,14 @@ Elytrium Java Serializer is uploaded to the Maven Central repository, so you can
 
 ### With some modifications
 
-1) Create the class that extends YamlSerializable. You can optionally modify the config and call ``YamlSerializable#setConfig(SerializerConfig)`` method. You can safely remove ``this.setConfig(Settings.CONFIG)``.
+1) Create the class that extends YamlSerializable. You can optionally modify the config and call ``YamlSerializable#setConfig(SerializerConfig)`` method. You can safely remove ``super(Settings.CONFIG)``.
     ```java
     public class Settings extends YamlSerializable {
     
       private static final SerializerConfig CONFIG = new SerializerConfig.Builder().build();
 
       Settings() {
-        this.setConfig(Settings.CONFIG);
+        suoer(Settings.CONFIG);
       }
 
       public String regularField = "regular value";

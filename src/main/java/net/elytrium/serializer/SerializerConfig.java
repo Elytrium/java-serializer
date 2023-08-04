@@ -61,16 +61,47 @@ public class SerializerConfig {
    * Converts the class field name to the config node field format.
    */
   public String toNodeName(String field) {
-    return field.length() > 0 && Character.isDigit(field.charAt(0))
+    return this.toNodeName(field, null, null);
+  }
+
+  /**
+   * Converts the class field name to the config node field format.
+   */
+  public String toNodeName(String field, NameStyle overriddenFieldNameStyle, NameStyle overriddenNodeNameStyle) {
+    if (overriddenFieldNameStyle == null) {
+      overriddenFieldNameStyle = this.fieldNameStyle;
+    }
+
+    if (overriddenNodeNameStyle == null) {
+      overriddenNodeNameStyle = this.nodeNameStyle;
+    }
+
+    return !field.isEmpty() && Character.isDigit(field.charAt(0))
         ? this.toNodeName('"' + field + '"')
-        : this.fieldNameStyle == this.nodeNameStyle ? field : this.nodeNameStyle.fromMacroCase(this.fieldNameStyle.toMacroCase(field));
+        : overriddenFieldNameStyle == overriddenNodeNameStyle ? field : overriddenNodeNameStyle.fromMacroCase(overriddenFieldNameStyle.toMacroCase(field));
   }
 
   /**
    * Converts the config node field to the class field name format.
    */
   public String toFieldName(String field) {
-    return this.fieldNameStyle == this.nodeNameStyle ? field : this.fieldNameStyle.fromMacroCase(this.nodeNameStyle.toMacroCase(field));
+    return this.toFieldName(field, null, null);
+  }
+
+  /**
+   * Converts the config node field to the class field name format.
+   */
+  public String toFieldName(String field, NameStyle overriddenFieldNameStyle, NameStyle overriddenNodeNameStyle) {
+    if (overriddenFieldNameStyle == null) {
+      overriddenFieldNameStyle = this.fieldNameStyle;
+    }
+
+    if (overriddenNodeNameStyle == null) {
+      overriddenNodeNameStyle = this.nodeNameStyle;
+    }
+
+    return overriddenFieldNameStyle == overriddenNodeNameStyle ? field
+        : overriddenFieldNameStyle.fromMacroCase(overriddenNodeNameStyle.toMacroCase(field));
   }
 
   public PlaceholderReplacer<?, ?> getAndCacheReplacer(Class<? extends PlaceholderReplacer<?, ?>> replacerClass) throws ReflectiveOperationException {

@@ -22,14 +22,18 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import net.elytrium.serializer.NameStyle;
 
 /**
- * Prepends a certain amount (default = 1) of empty lines before the field.
+ * Overrides class field name style
+ *
+ * @see net.elytrium.serializer.SerializerConfig.Builder#setFieldNameStyle(NameStyle) (NameStyle)
  */
 @Documented
 @Target({ElementType.FIELD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface NewLine {
+public @interface OverrideNameStyle {
 
-  int amount() default 1;
+  NameStyle field();
+  NameStyle node();
 }

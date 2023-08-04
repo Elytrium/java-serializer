@@ -25,13 +25,16 @@ import java.lang.reflect.Type;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.elytrium.serializer.SerializerConfig;
+import net.elytrium.serializer.annotations.FallbackNodeNames;
 import net.elytrium.serializer.annotations.Final;
+import net.elytrium.serializer.annotations.OverrideNameStyle;
 import net.elytrium.serializer.annotations.RegisterPlaceholders;
 import net.elytrium.serializer.annotations.Transient;
 import net.elytrium.serializer.custom.ClassSerializer;
@@ -64,7 +67,8 @@ public class YamlReader extends AbstractReader {
       Field[] fields = clazz.getDeclaredFields();
       if (fields.length != 0) {
         try {
-          // Register initial values.
+          // Register initial values and make nodeName->field map.
+          Map<String, Field> nodeFieldMap = new HashMap<>();
           for (Field field : fields) {
             try {
               field.setAccessible(true);
@@ -73,8 +77,30 @@ public class YamlReader extends AbstractReader {
             }
 
             RegisterPlaceholders placeholders = field.getAnnotation(RegisterPlaceholders.class);
+            if (placeholders == null) {
+              placeholders = field.getType().getAnnotation(RegisterPlaceholders.class);
+            }
+
             if (placeholders != null) {
               Placeholders.addPlaceholders(field.get(holder), this.config.getAndCacheReplacer(placeholders.replacer()), placeholders.value());
+            }
+
+            OverrideNameStyle overrideNameStyle = field.getAnnotation(OverrideNameStyle.class);
+            if (overrideNameStyle == null) {
+              overrideNameStyle = field.getType().getAnnotation(OverrideNameStyle.class);
+            }
+
+            String nodeName = overrideNameStyle != null
+                ? this.config.toNodeName(field.getName(), overrideNameStyle.field(), overrideNameStyle.node())
+                : this.config.toNodeName(field.getName());
+
+            nodeFieldMap.put(nodeName, field);
+
+            FallbackNodeNames fallbackNodeNames = field.getAnnotation(FallbackNodeNames.class);
+            if (fallbackNodeNames != null) {
+              for (String fallbackNodeName : fallbackNodeNames.value()) {
+                nodeFieldMap.put(fallbackNodeName, field);
+              }
             }
           }
 
@@ -82,7 +108,11 @@ public class YamlReader extends AbstractReader {
           String nodeName;
           while (correctIndent == this.currentIndent && (nodeName = this.readNodeName()) != null) {
             try {
-              Field node = clazz.getDeclaredField(this.config.toFieldName(nodeName));
+              Field node = nodeFieldMap.get(nodeName);
+              if (node == null) {
+                throw new NoSuchFieldException(nodeName);
+              }
+
               try {
                 node.setAccessible(true);
               } catch (Exception e) {
@@ -97,6 +127,9 @@ public class YamlReader extends AbstractReader {
                 Placeholders.removePlaceholders(node.get(holder));
                 this.readNode(holder, node);
                 RegisterPlaceholders placeholders = node.getAnnotation(RegisterPlaceholders.class);
+                if (placeholders == null) {
+                  placeholders = node.getType().getAnnotation(RegisterPlaceholders.class);
+                }
                 if (placeholders != null) {
                   Placeholders.addPlaceholders(node.get(holder), this.config.getAndCacheReplacer(placeholders.replacer()), placeholders.value());
                 }
@@ -410,7 +443,7 @@ public class YamlReader extends AbstractReader {
       if (String.class.isAssignableFrom(keyClazz)) {
         key = nodeName;
       } else if (Character.class.isAssignableFrom(keyClazz) || char.class.isAssignableFrom(keyClazz)) {
-        if (nodeName.length() == 0) {
+        if (nodeName.isEmpty()) {
           throw new IllegalStateException("Character can't be null!");
         } else {
           key = nodeName.charAt(0);

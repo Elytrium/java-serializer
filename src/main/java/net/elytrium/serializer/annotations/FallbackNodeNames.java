@@ -17,6 +17,7 @@
 
 package net.elytrium.serializer.annotations;
 
+
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -24,12 +25,12 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Prepends a certain amount (default = 1) of empty lines before the field.
+ * Fallback serialized node names to search
  */
 @Documented
-@Target({ElementType.FIELD, ElementType.TYPE})
+@Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface NewLine {
+public @interface FallbackNodeNames {
 
-  int amount() default 1;
+  String[] value();
 }

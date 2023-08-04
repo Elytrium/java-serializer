@@ -79,6 +79,10 @@ public abstract class AbstractReader {
       );
 
       Serializer serializer = node.getAnnotation(Serializer.class);
+      if (serializer == null) {
+        serializer = node.getType().getAnnotation(Serializer.class);
+      }
+
       if (serializer != null) {
         try {
           ClassSerializer<?, Object> classSerializer = this.config.getAndCacheSerializer(serializer);

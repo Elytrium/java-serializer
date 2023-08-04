@@ -35,6 +35,7 @@ import net.elytrium.serializer.annotations.Comment;
 import net.elytrium.serializer.annotations.CommentValue;
 import net.elytrium.serializer.annotations.Final;
 import net.elytrium.serializer.annotations.NewLine;
+import net.elytrium.serializer.annotations.OverrideNameStyle;
 import net.elytrium.serializer.annotations.RegisterPlaceholders;
 import net.elytrium.serializer.annotations.Serializer;
 import net.elytrium.serializer.custom.ClassSerializer;
@@ -259,7 +260,7 @@ class SerializerTest {
     }).registerSerializer(new PathSerializer()).build();
 
     Settings() {
-      this.setConfig(Settings.CONFIG);
+      super(Settings.CONFIG);
     }
 
     @Final
@@ -312,10 +313,15 @@ class SerializerTest {
         @CommentValue(" PREPEND comment Line 1"),
         @CommentValue(" PREPEND comment Line 2")
     })
+    @OverrideNameStyle(field = NameStyle.CAMEL_CASE, node = NameStyle.COBOL_CASE)
     public Prepend prepend = new Prepend();
 
+    @Comment({
+        @CommentValue(" PREPEND class comment")
+    })
     public static class Prepend {
 
+      @OverrideNameStyle(field = NameStyle.CAMEL_CASE, node = NameStyle.COBOL_CASE)
       public String stringField = "string value";
 
       @NewLine
