@@ -36,7 +36,7 @@ public class JsonReader extends YamlReader {
       if (marker == '/') {
         if (this.readRaw() == '/') {
           while (true) {
-            if (this.readRaw() == AbstractReader.NEW_LINE) {
+            if (this.isEndMarker(this.readRaw())) {
               break;
             }
           }

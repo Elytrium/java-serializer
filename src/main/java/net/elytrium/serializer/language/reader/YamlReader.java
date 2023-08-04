@@ -262,7 +262,7 @@ public class YamlReader extends AbstractReader {
     StringBuilder hex = new StringBuilder();
     for (int i = 0; i < size; ++i) {
       char c = this.readRaw();
-      if (c == NEW_LINE) {
+      if (this.isEndMarker(c)) {
         throw new IllegalStateException("Got new line while reading hex char");
       }
 
@@ -315,7 +315,7 @@ public class YamlReader extends AbstractReader {
           return null;
         }
 
-        while (marker != AbstractReader.NEW_LINE && (marker != ',' || this.bracketOpened) && !this.skipComments(marker, false)) {
+        while (!this.isEndMarker(marker) && (marker != ',' || this.bracketOpened) && !this.skipComments(marker, false)) {
           if (result == null) { // Set the result only after we ensure we not at end of line/field.
             result = marker;
           }
@@ -699,7 +699,7 @@ public class YamlReader extends AbstractReader {
     this.setSeek();
     if (marker == 'n' && this.readRaw() == 'u' && this.readRaw() == 'l' && this.readRaw() == 'l') {
       char endMarker = this.readRawIgnoreEmpty();
-      if (endMarker == AbstractReader.NEW_LINE || (endMarker == ',' && this.bracketOpened)) {
+      if (this.isEndMarker(endMarker) || (endMarker == ',' && this.bracketOpened)) {
         this.clearSeek();
         return true;
       }
@@ -721,7 +721,7 @@ public class YamlReader extends AbstractReader {
     switch (marker) {
       case '"' -> {
         while ((marker = this.readRaw()) != '"') {
-          if (marker == AbstractReader.NEW_LINE) {
+          if (this.isEndMarker(marker)) {
             if (nodeName) {
               throw new IllegalStateException("Got a new line in node name: " + result);
             }
@@ -748,7 +748,7 @@ public class YamlReader extends AbstractReader {
       case '\'' -> {
         while (true) {
           marker = this.readRaw();
-          if (marker == AbstractReader.NEW_LINE) {
+          if (this.isEndMarker(marker)) {
             if (nodeName) {
               throw new IllegalStateException("Got a new line in node name: " + result);
             }
@@ -788,10 +788,10 @@ public class YamlReader extends AbstractReader {
         // See YamlReader#skipComments(char, boolean) for details about Character.isWhitespace(char) and YamlReader#skipComments(char, true/*!!*/).
         while (nodeName
             ? (marker != ':')
-            : (marker != AbstractReader.NEW_LINE
+            : (!this.isEndMarker(marker)
                && (marker != ',' || this.bracketOpened)
                && (!Character.isWhitespace(marker) || !this.skipComments(this.readRaw(), true)))) {
-          if (nodeName && marker == AbstractReader.NEW_LINE) {
+          if (nodeName && this.isEndMarker(marker)) {
             throw new IllegalStateException("Got a new line in node name: " + result);
           }
 
@@ -831,7 +831,7 @@ public class YamlReader extends AbstractReader {
         while ((marker = this.readRaw()) != '"') {
           if (marker == '\\') {
             this.readRaw(); // To ensure the reading doesn't stop at \"
-          } else if (nodeName && marker == AbstractReader.NEW_LINE) {
+          } else if (nodeName && this.isEndMarker(marker)) {
             throw new IllegalStateException("Got a new line in node name.");
           }
         }
@@ -846,7 +846,7 @@ public class YamlReader extends AbstractReader {
       case '\'' -> {
         do {
           marker = this.readRaw();
-          if (nodeName && marker == AbstractReader.NEW_LINE) {
+          if (nodeName && this.isEndMarker(marker)) {
             throw new IllegalStateException("Got a new line in node name.");
           }
         } while (marker != '\'' || this.readRaw() == '\''); // 'text1 ''text2'' text3' reads as "text 'text2' text3".
@@ -861,8 +861,8 @@ public class YamlReader extends AbstractReader {
         while (nodeName
             ? (marker != ':')
             // Here we don't need to care about bad comments, so we can ignore whitespace check, see YamlReader#skipComments(char, boolean) for details.
-            : (marker != AbstractReader.NEW_LINE && (marker != ',' || this.bracketOpened) && !this.skipComments(marker, false))) {
-          if (nodeName && marker == AbstractReader.NEW_LINE) {
+            : (!this.isEndMarker(marker) && (marker != ',' || this.bracketOpened) && !this.skipComments(marker, false))) {
+          if (nodeName && this.isEndMarker(marker)) {
             throw new IllegalStateException("Got a new line in node name.");
           }
 
@@ -877,7 +877,7 @@ public class YamlReader extends AbstractReader {
     synchronized (this) {
       if (marker == '#') {
         while (true) {
-          if (this.readRaw() == AbstractReader.NEW_LINE) {
+          if (this.isEndMarker(this.readRaw())) {
             break;
           }
         }
@@ -896,6 +896,10 @@ public class YamlReader extends AbstractReader {
 
       return false;
     }
+  }
+
+  protected boolean isEndMarker(char marker) {
+    return marker == 0 || marker == AbstractReader.NEW_LINE;
   }
 
   @Override
@@ -945,7 +949,7 @@ public class YamlReader extends AbstractReader {
       StringBuilder result = new StringBuilder();
       while (true) {
         while (marker != ':') {
-          if (marker == AbstractReader.NEW_LINE) {
+          if (this.isEndMarker(marker)) {
             throw new IllegalStateException("Got a new line in node name: " + result);
           }
 
