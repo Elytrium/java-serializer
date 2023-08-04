@@ -38,6 +38,8 @@ import net.elytrium.serializer.annotations.OverrideNameStyle;
 import net.elytrium.serializer.annotations.RegisterPlaceholders;
 import net.elytrium.serializer.annotations.Transient;
 import net.elytrium.serializer.custom.ClassSerializer;
+import net.elytrium.serializer.placeholders.DefaultPlaceholderReplacer;
+import net.elytrium.serializer.placeholders.PlaceholderReplacer;
 import net.elytrium.serializer.placeholders.Placeholders;
 
 public class YamlReader extends AbstractReader {
@@ -76,14 +78,7 @@ public class YamlReader extends AbstractReader {
               continue;
             }
 
-            RegisterPlaceholders placeholders = field.getAnnotation(RegisterPlaceholders.class);
-            if (placeholders == null) {
-              placeholders = field.getType().getAnnotation(RegisterPlaceholders.class);
-            }
-
-            if (placeholders != null) {
-              Placeholders.addPlaceholders(field.get(holder), this.config.getAndCacheReplacer(placeholders.replacer()), placeholders.value());
-            }
+            this.updatePlaceholders(holder, field);
 
             OverrideNameStyle overrideNameStyle = field.getAnnotation(OverrideNameStyle.class);
             if (overrideNameStyle == null) {
@@ -126,13 +121,7 @@ public class YamlReader extends AbstractReader {
                   && node.getAnnotation(Transient.class) == null && node.getType().getAnnotation(Transient.class) == null) {
                 Placeholders.removePlaceholders(node.get(holder));
                 this.readNode(holder, node);
-                RegisterPlaceholders placeholders = node.getAnnotation(RegisterPlaceholders.class);
-                if (placeholders == null) {
-                  placeholders = node.getType().getAnnotation(RegisterPlaceholders.class);
-                }
-                if (placeholders != null) {
-                  Placeholders.addPlaceholders(node.get(holder), this.config.getAndCacheReplacer(placeholders.replacer()), placeholders.value());
-                }
+                this.updatePlaceholders(holder, node);
               } else {
                 this.skipNode(node);
               }
@@ -161,6 +150,26 @@ public class YamlReader extends AbstractReader {
       }
 
       this.readEndSerializableObject();
+    }
+  }
+
+  private void updatePlaceholders(Object holder, Field node) throws ReflectiveOperationException {
+    RegisterPlaceholders placeholders = node.getAnnotation(RegisterPlaceholders.class);
+    if (placeholders == null) {
+      placeholders = node.getType().getAnnotation(RegisterPlaceholders.class);
+    }
+
+    if (placeholders != null) {
+      PlaceholderReplacer<?, ?> replacer = null;
+      if (placeholders.replacer() == DefaultPlaceholderReplacer.class) {
+        replacer = this.config.getRegisteredReplacer(holder.getClass());
+      }
+
+      if (replacer == null) {
+        replacer = this.config.getAndCacheReplacer(placeholders.replacer());
+      }
+
+      Placeholders.addPlaceholders(node.get(holder), replacer, placeholders.value());
     }
   }
 
@@ -252,8 +261,12 @@ public class YamlReader extends AbstractReader {
   private int readHexChar(int size) {
     StringBuilder hex = new StringBuilder();
     for (int i = 0; i < size; ++i) {
-      // TODO read until new line and throw exception if not enough chars was read
-      hex.append(this.readRaw());
+      char c = this.readRaw();
+      if (c == NEW_LINE) {
+        throw new IllegalStateException("Got new line while reading hex char");
+      }
+
+      hex.append(c);
     }
 
     return Integer.valueOf(hex.toString(), 16);

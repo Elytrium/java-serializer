@@ -19,6 +19,8 @@ package net.elytrium.serializer;
 
 import edu.umd.cs.findbugs.annotations.Nullable;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -26,10 +28,10 @@ import net.elytrium.serializer.annotations.Serializer;
 import net.elytrium.serializer.custom.ClassSerializer;
 import net.elytrium.serializer.placeholders.PlaceholderReplacer;
 
-// TODO возможность регистрировать кастомные реплейсеры конфигом
 public class SerializerConfig {
 
   public static final SerializerConfig DEFAULT = new SerializerConfig(
+      new HashMap<>(),
       new HashMap<>(),
       NameStyle.CAMEL_CASE,
       NameStyle.KEBAB_CASE,
@@ -40,6 +42,7 @@ public class SerializerConfig {
 
   private final Map<Class<? extends PlaceholderReplacer<?, ?>>, PlaceholderReplacer<?, ?>> cachedReplacers = new HashMap<>();
   private final Map<Class<? extends ClassSerializer<?, ?>>, ClassSerializer<?, ?>> cachedSerializers = new HashMap<>();
+  private final Map<Class<?>, PlaceholderReplacer<?, ?>> registeredReplacers;
   private final Map<Class<?>, ClassSerializer<?, ?>> registeredSerializers;
   private final NameStyle fieldNameStyle;
   private final NameStyle nodeNameStyle;
@@ -47,8 +50,9 @@ public class SerializerConfig {
   private final boolean allowUnicode;
   private final String lineSeparator;
 
-  private SerializerConfig(Map<Class<?>, ClassSerializer<?, ?>> registeredSerializers,
-      NameStyle fieldNameStyle, NameStyle nodeNameStyle, boolean safeMode, boolean allowUnicode, String lineSeparator) {
+  private SerializerConfig(Map<Class<?>, PlaceholderReplacer<?, ?>> registeredReplacers, Map<Class<?>, ClassSerializer<?, ?>> registeredSerializers,
+                           NameStyle fieldNameStyle, NameStyle nodeNameStyle, boolean safeMode, boolean allowUnicode, String lineSeparator) {
+    this.registeredReplacers = registeredReplacers;
     this.registeredSerializers = registeredSerializers;
     this.fieldNameStyle = fieldNameStyle;
     this.nodeNameStyle = nodeNameStyle;
@@ -156,6 +160,28 @@ public class SerializerConfig {
     return this.cachedSerializers.size() + this.registeredSerializers.size();
   }
 
+  @Nullable
+  @SuppressWarnings("unchecked")
+  public <T, P> PlaceholderReplacer<T, P> getRegisteredReplacer(Class<?> to) {
+    while (to != null && to != Object.class) {
+      PlaceholderReplacer<T, P> serializer = (PlaceholderReplacer<T, P>) this.registeredReplacers.get(to);
+      if (serializer == null) {
+        for (Class<?> classInterface : to.getInterfaces()) {
+          serializer = (PlaceholderReplacer<T, P>) this.registeredReplacers.get(classInterface);
+          if (serializer != null) {
+            return serializer;
+          }
+        }
+
+        to = to.getSuperclass();
+      } else {
+        return serializer;
+      }
+    }
+
+    return (PlaceholderReplacer<T, P>) this.registeredReplacers.get(to);
+  }
+
   public boolean isSafeMode() {
     return this.safeMode;
   }
@@ -170,6 +196,7 @@ public class SerializerConfig {
 
   public static class Builder {
 
+    private final Map<Class<?>, PlaceholderReplacer<?, ?>> registeredReplacers = new HashMap<>();
     private final Map<Class<?>, ClassSerializer<?, ?>> registeredSerializers = new HashMap<>();
 
     private NameStyle fieldNameStyle = NameStyle.CAMEL_CASE;
@@ -185,6 +212,20 @@ public class SerializerConfig {
 
     public Builder registerSerializer(Collection<ClassSerializer<?, ?>> serializers) {
       serializers.forEach(serializer -> this.registeredSerializers.put(serializer.getToType(), serializer));
+      return this;
+    }
+
+    public Builder registerReplacer(PlaceholderReplacer<?, ?> serializer) {
+      Type[] actualTypeArguments = ((ParameterizedType) this.getClass().getGenericSuperclass()).getActualTypeArguments();
+      Class<?> clazz = actualTypeArguments[0] instanceof Class<?>
+          ? (Class<?>) actualTypeArguments[0]
+          : (Class<?>) ((ParameterizedType) actualTypeArguments[0]).getRawType();
+      this.registeredReplacers.put(clazz, serializer);
+      return this;
+    }
+
+    public Builder registerReplacer(Collection<PlaceholderReplacer<?, ?>> replacers) {
+      replacers.forEach(this::registerReplacer);
       return this;
     }
 
@@ -215,6 +256,7 @@ public class SerializerConfig {
 
     public SerializerConfig build() {
       return new SerializerConfig(
+          this.registeredReplacers,
           this.registeredSerializers,
           this.fieldNameStyle,
           this.nodeNameStyle,

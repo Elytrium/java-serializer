@@ -24,7 +24,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import net.elytrium.serializer.placeholders.PlaceholderReplacer;
 import net.elytrium.serializer.placeholders.Placeholders;
-import net.elytrium.serializer.placeholders.StringPlaceholderReplacer;
+import net.elytrium.serializer.placeholders.DefaultPlaceholderReplacer;
 
 /**
  * Register placeholders, to use {@link Placeholders#replace(Object, Object...)} later.
@@ -36,5 +36,5 @@ public @interface RegisterPlaceholders {
 
   String[] value();
 
-  Class<? extends PlaceholderReplacer<?, ?>> replacer() default StringPlaceholderReplacer.class;
+  Class<? extends PlaceholderReplacer<?, ?>> replacer() default DefaultPlaceholderReplacer.class;
 }

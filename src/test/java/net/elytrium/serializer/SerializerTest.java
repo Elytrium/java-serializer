@@ -42,7 +42,7 @@ import net.elytrium.serializer.custom.ClassSerializer;
 import net.elytrium.serializer.language.object.YamlSerializable;
 import net.elytrium.serializer.language.writer.YamlWriter;
 import net.elytrium.serializer.placeholders.Placeholders;
-import net.elytrium.serializer.placeholders.StringPlaceholderReplacer;
+import net.elytrium.serializer.placeholders.DefaultPlaceholderReplacer;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -51,7 +51,7 @@ class SerializerTest {
   @Test
   void placeholdersTest() {
     String stringWithPlaceholders = "{PLACEHOLDER1} {PLACEHOLDER2} {PLACEHOLDER3}";
-    Placeholders.addPlaceholders(stringWithPlaceholders, new StringPlaceholderReplacer(), "placeholder3", "PLACEHOLDER1", "{PLACEHOLDER2}");
+    Placeholders.addPlaceholders(stringWithPlaceholders, new DefaultPlaceholderReplacer(), "placeholder3", "PLACEHOLDER1", "{PLACEHOLDER2}");
     Assertions.assertEquals("2 3 1", Placeholders.replace(stringWithPlaceholders, "1", "2", "3"));
     Placeholders.removePlaceholders(stringWithPlaceholders);
   }

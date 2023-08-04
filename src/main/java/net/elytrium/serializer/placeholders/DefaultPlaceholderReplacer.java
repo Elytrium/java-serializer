@@ -17,14 +17,14 @@
 
 package net.elytrium.serializer.placeholders;
 
-public class StringPlaceholderReplacer implements PlaceholderReplacer<String, String> {
+public class DefaultPlaceholderReplacer implements PlaceholderReplacer<String, String> {
 
   @Override
   public String replace(String value, String[] placeholders, Object... values) {
     return switch (placeholders.length) {
       case 0 -> value;
       case 1 -> values.length == 0 || value.isEmpty() ? value : value.replace(placeholders[0], String.valueOf(values[0]));
-      default -> StringPlaceholderReplacer.replaceEach(value, placeholders, values);
+      default -> DefaultPlaceholderReplacer.replaceEach(value, placeholders, values);
     };
   }
 
