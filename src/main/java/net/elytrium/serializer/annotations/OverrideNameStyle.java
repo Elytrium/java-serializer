@@ -30,10 +30,17 @@ import net.elytrium.serializer.NameStyle;
  * @see net.elytrium.serializer.SerializerConfig.Builder#setFieldNameStyle(NameStyle) (NameStyle)
  */
 @Documented
-@Target({ElementType.FIELD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.TYPE, ElementType.FIELD})
 public @interface OverrideNameStyle {
 
-  NameStyle field();
-  NameStyle node();
+  /**
+   * Java field name style.
+   */
+  NameStyle field() default NameStyle.CAMEL_CASE;
+
+  /**
+   * Serialized node name style.
+   */
+  NameStyle node() default NameStyle.KEBAB_CASE;
 }

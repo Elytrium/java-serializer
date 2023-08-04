@@ -28,8 +28,8 @@ import net.elytrium.serializer.custom.ClassSerializer;
  * Allows to (de-)serialize custom types.
  */
 @Documented
-@Target({ElementType.FIELD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.TYPE, ElementType.FIELD})
 public @interface Serializer {
 
   /**

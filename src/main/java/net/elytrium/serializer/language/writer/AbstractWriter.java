@@ -111,15 +111,16 @@ public abstract class AbstractWriter {
                 overrideNameStyle = field.getType().getAnnotation(OverrideNameStyle.class);
               }
 
-              String nodeName = overrideNameStyle != null
-                  ? this.config.toNodeName(field.getName(), overrideNameStyle.field(), overrideNameStyle.node())
-                  : this.config.toNodeName(field.getName());
-
-              Comment[] comments = Stream.of(field.getType().getAnnotationsByType(Comment.class), field.getAnnotationsByType(Comment.class))
-                  .flatMap(Stream::of)
-                  .toArray(Comment[]::new);
-
-              this.writeMapEntry(nodeName, nodeValue, counter != fields.length, comments);
+              this.writeMapEntry(
+                  overrideNameStyle == null
+                      ? this.config.toNodeName(field.getName())
+                      : this.config.toNodeName(field.getName(), overrideNameStyle.field(), overrideNameStyle.node()),
+                  nodeValue,
+                  counter != fields.length,
+                  Stream.of(field.getType().getAnnotationsByType(Comment.class), field.getAnnotationsByType(Comment.class))
+                      .flatMap(Stream::of)
+                      .toArray(Comment[]::new)
+              );
             } catch (ReflectiveOperationException e) {
               throw new ReflectionException(e);
             }

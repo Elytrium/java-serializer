@@ -27,8 +27,8 @@ import java.lang.annotation.Target;
  * Prepends a certain amount (default = 1) of empty lines before the field.
  */
 @Documented
-@Target({ElementType.FIELD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.TYPE, ElementType.FIELD})
 public @interface NewLine {
 
   int amount() default 1;

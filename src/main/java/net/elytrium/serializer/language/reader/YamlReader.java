@@ -85,11 +85,12 @@ public class YamlReader extends AbstractReader {
               overrideNameStyle = field.getType().getAnnotation(OverrideNameStyle.class);
             }
 
-            String nodeName = overrideNameStyle != null
-                ? this.config.toNodeName(field.getName(), overrideNameStyle.field(), overrideNameStyle.node())
-                : this.config.toNodeName(field.getName());
-
-            nodeFieldMap.put(nodeName, field);
+            nodeFieldMap.put(
+                overrideNameStyle == null
+                    ? this.config.toNodeName(field.getName())
+                    : this.config.toNodeName(field.getName(), overrideNameStyle.field(), overrideNameStyle.node()),
+                field
+            );
 
             FallbackNodeNames fallbackNodeNames = field.getAnnotation(FallbackNodeNames.class);
             if (fallbackNodeNames != null) {
@@ -261,12 +262,12 @@ public class YamlReader extends AbstractReader {
   private int readHexChar(int size) {
     StringBuilder hex = new StringBuilder();
     for (int i = 0; i < size; ++i) {
-      char c = this.readRaw();
-      if (this.isEndMarker(c)) {
+      char character = this.readRaw();
+      if (this.isEndMarker(character)) {
         throw new IllegalStateException("Got new line while reading hex char");
       }
 
-      hex.append(c);
+      hex.append(character);
     }
 
     return Integer.valueOf(hex.toString(), 16);
@@ -899,7 +900,7 @@ public class YamlReader extends AbstractReader {
   }
 
   protected boolean isEndMarker(char marker) {
-    return marker == 0 || marker == AbstractReader.NEW_LINE;
+    return marker == '\0' || marker == AbstractReader.NEW_LINE;
   }
 
   @Override

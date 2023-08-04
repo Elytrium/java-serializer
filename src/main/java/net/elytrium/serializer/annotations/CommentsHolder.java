@@ -27,8 +27,8 @@ import java.lang.annotation.Target;
  * Comments holder.
  */
 @Documented
-@Target({ElementType.FIELD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.TYPE, ElementType.FIELD})
 public @interface CommentsHolder {
 
   Comment[] value();

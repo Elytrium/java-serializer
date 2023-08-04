@@ -51,7 +51,7 @@ public class SerializerConfig {
   private final String lineSeparator;
 
   private SerializerConfig(Map<Class<?>, PlaceholderReplacer<?, ?>> registeredReplacers, Map<Class<?>, ClassSerializer<?, ?>> registeredSerializers,
-                           NameStyle fieldNameStyle, NameStyle nodeNameStyle, boolean safeMode, boolean allowUnicode, String lineSeparator) {
+      NameStyle fieldNameStyle, NameStyle nodeNameStyle, boolean safeMode, boolean allowUnicode, String lineSeparator) {
     this.registeredReplacers = registeredReplacers;
     this.registeredSerializers = registeredSerializers;
     this.fieldNameStyle = fieldNameStyle;
@@ -104,7 +104,8 @@ public class SerializerConfig {
       overriddenNodeNameStyle = this.nodeNameStyle;
     }
 
-    return overriddenFieldNameStyle == overriddenNodeNameStyle ? field
+    return overriddenFieldNameStyle == overriddenNodeNameStyle
+        ? field
         : overriddenFieldNameStyle.fromMacroCase(overriddenNodeNameStyle.toMacroCase(field));
   }
 
@@ -138,7 +139,7 @@ public class SerializerConfig {
   @SuppressWarnings("unchecked")
   public <T, F> ClassSerializer<T, F> getRegisteredSerializer(Class<?> to) {
     while (to != null && to != Object.class) {
-      ClassSerializer<T, F> serializer = (ClassSerializer<T, F>) this.registeredSerializers.get(to);
+      var serializer = (ClassSerializer<T, F>) this.registeredSerializers.get(to);
       if (serializer == null) {
         for (Class<?> classInterface : to.getInterfaces()) {
           serializer = (ClassSerializer<T, F>) this.registeredSerializers.get(classInterface);
@@ -156,15 +157,11 @@ public class SerializerConfig {
     return (ClassSerializer<T, F>) this.registeredSerializers.get(to);
   }
 
-  public int getRegisteredSerializers() {
-    return this.cachedSerializers.size() + this.registeredSerializers.size();
-  }
-
   @Nullable
   @SuppressWarnings("unchecked")
   public <T, P> PlaceholderReplacer<T, P> getRegisteredReplacer(Class<?> to) {
     while (to != null && to != Object.class) {
-      PlaceholderReplacer<T, P> serializer = (PlaceholderReplacer<T, P>) this.registeredReplacers.get(to);
+      var serializer = (PlaceholderReplacer<T, P>) this.registeredReplacers.get(to);
       if (serializer == null) {
         for (Class<?> classInterface : to.getInterfaces()) {
           serializer = (PlaceholderReplacer<T, P>) this.registeredReplacers.get(classInterface);
@@ -180,6 +177,10 @@ public class SerializerConfig {
     }
 
     return (PlaceholderReplacer<T, P>) this.registeredReplacers.get(to);
+  }
+
+  public int getRegisteredSerializers() {
+    return this.cachedSerializers.size() + this.registeredSerializers.size();
   }
 
   public boolean isSafeMode() {
@@ -216,11 +217,13 @@ public class SerializerConfig {
     }
 
     public Builder registerReplacer(PlaceholderReplacer<?, ?> serializer) {
-      Type[] actualTypeArguments = ((ParameterizedType) this.getClass().getGenericSuperclass()).getActualTypeArguments();
-      Class<?> clazz = actualTypeArguments[0] instanceof Class<?>
-          ? (Class<?>) actualTypeArguments[0]
-          : (Class<?>) ((ParameterizedType) actualTypeArguments[0]).getRawType();
-      this.registeredReplacers.put(clazz, serializer);
+      Type[] actualTypeArguments = ((ParameterizedType) serializer.getClass().getGenericSuperclass()).getActualTypeArguments();
+      this.registeredReplacers.put(
+          actualTypeArguments[0] instanceof Class<?> clazz
+              ? clazz
+              : (Class<?>) ((ParameterizedType) actualTypeArguments[0]).getRawType(),
+          serializer
+      );
       return this;
     }
 

@@ -30,8 +30,8 @@ import net.elytrium.serializer.placeholders.Placeholders;
  * Register placeholders, to use {@link Placeholders#replace(Object, Object...)} later.
  */
 @Documented
-@Target({ElementType.FIELD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.TYPE, ElementType.FIELD})
 public @interface RegisterPlaceholders {
 
   String[] value();

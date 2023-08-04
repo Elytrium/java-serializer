@@ -313,15 +313,13 @@ class SerializerTest {
         @CommentValue(" PREPEND comment Line 1"),
         @CommentValue(" PREPEND comment Line 2")
     })
-    @OverrideNameStyle(field = NameStyle.CAMEL_CASE, node = NameStyle.COBOL_CASE)
+    @OverrideNameStyle(node = NameStyle.COBOL_CASE)
     public Prepend prepend = new Prepend();
 
-    @Comment({
-        @CommentValue(" PREPEND class comment")
-    })
+    @Comment(@CommentValue(" PREPEND class comment"))
     public static class Prepend {
 
-      @OverrideNameStyle(field = NameStyle.CAMEL_CASE, node = NameStyle.COBOL_CASE)
+      @OverrideNameStyle(node = NameStyle.COBOL_CASE)
       public String stringField = "string value";
 
       @NewLine
