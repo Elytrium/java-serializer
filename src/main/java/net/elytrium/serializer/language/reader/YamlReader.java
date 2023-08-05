@@ -371,6 +371,7 @@ public class YamlReader extends AbstractReader {
         break;
       }
       case AbstractReader.NEW_LINE: {
+        this.skipComments(this.readRawIgnoreEmpty(), true);
         char nextMarker = this.readRawIgnoreEmpty();
         if (nextMarker != '-') {
           throw new IllegalStateException("Got unknown marker when reading list: " + nextMarker);
@@ -558,7 +559,7 @@ public class YamlReader extends AbstractReader {
 
         this.setSeekFromMarker(marker);
         String string = this.readStringFromMarker(marker, false);
-        if (string.endsWith(":") || string.contains(": ")) {
+        if (string.endsWith(":") || string.endsWith(": ") || string.contains(": ")) {
           this.unsetSeek();
           this.unsetTempRestoreNewLine();
           yield this.readMapByMarker(Object.class, Object.class, AbstractReader.NEW_LINE);
@@ -610,7 +611,7 @@ public class YamlReader extends AbstractReader {
 
         this.setSeekFromMarker(marker);
         String string = this.readStringFromMarker(marker, false);
-        if (string.endsWith(":") || string.contains(": ")) {
+        if (string.endsWith(":") || string.endsWith(": ") || string.contains(": ")) {
           this.unsetSeek();
           this.unsetTempRestoreNewLine();
           this.skipMapByMarker(NEW_LINE);
@@ -641,6 +642,7 @@ public class YamlReader extends AbstractReader {
         break;
       }
       case AbstractReader.NEW_LINE: {
+        this.skipComments(this.readRawIgnoreEmpty(), true);
         char nextMarker = this.readRawIgnoreEmpty();
         if (nextMarker != '-') {
           throw new IllegalStateException("Got unknown marker when reading list: " + nextMarker);
@@ -669,8 +671,14 @@ public class YamlReader extends AbstractReader {
 
   @Override
   public void skipMap() {
+    boolean startOfFile = this.startOfFile;
     synchronized (this) {
-      this.skipMapByMarker(this.readRawIgnoreEmpty());
+      char marker = this.readRawIgnoreEmpty();
+      if (startOfFile) {
+        this.setTempRestoreNewLine();
+      }
+
+      this.skipMapByMarker(marker);
     }
   }
 
