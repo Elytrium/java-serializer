@@ -159,4 +159,4 @@ test-class:
 created-test-class:
   strings-list:
     - "test-1"
-    - "test-2"
+    - "{PLACEHOLDER}-2"

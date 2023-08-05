@@ -37,8 +37,8 @@ public class SerializerConfig {
       NameStyle.KEBAB_CASE,
       false,
       false,
-      System.lineSeparator()
-  );
+      System.lineSeparator(),
+      true);
 
   private final Map<Class<? extends PlaceholderReplacer<?, ?>>, PlaceholderReplacer<?, ?>> cachedReplacers = new HashMap<>();
   private final Map<Class<? extends ClassSerializer<?, ?>>, ClassSerializer<?, ?>> cachedSerializers = new HashMap<>();
@@ -49,9 +49,11 @@ public class SerializerConfig {
   private final boolean safeMode;
   private final boolean allowUnicode;
   private final String lineSeparator;
+  private final boolean registerPlaceholdersForCollectionEntries;
 
   private SerializerConfig(Map<Class<?>, PlaceholderReplacer<?, ?>> registeredReplacers, Map<Class<?>, ClassSerializer<?, ?>> registeredSerializers,
-      NameStyle fieldNameStyle, NameStyle nodeNameStyle, boolean safeMode, boolean allowUnicode, String lineSeparator) {
+                           NameStyle fieldNameStyle, NameStyle nodeNameStyle, boolean safeMode, boolean allowUnicode, String lineSeparator,
+                           boolean registerPlaceholdersForCollectionEntries) {
     this.registeredReplacers = registeredReplacers;
     this.registeredSerializers = registeredSerializers;
     this.fieldNameStyle = fieldNameStyle;
@@ -59,6 +61,7 @@ public class SerializerConfig {
     this.safeMode = safeMode;
     this.allowUnicode = allowUnicode;
     this.lineSeparator = lineSeparator;
+    this.registerPlaceholdersForCollectionEntries = registerPlaceholdersForCollectionEntries;
   }
 
   /**
@@ -195,6 +198,10 @@ public class SerializerConfig {
     return this.lineSeparator;
   }
 
+  public boolean isregisterPlaceholdersForCollectionEntries() {
+    return this.registerPlaceholdersForCollectionEntries;
+  }
+
   public static class Builder {
 
     private final Map<Class<?>, PlaceholderReplacer<?, ?>> registeredReplacers = new HashMap<>();
@@ -205,6 +212,7 @@ public class SerializerConfig {
     private boolean safeMode = false;
     private boolean allowUnicode = false;
     private String lineSeparator = System.lineSeparator();
+    private boolean registerPlaceholdersForCollectionEntries = true;
 
     public Builder registerSerializer(Collection<ClassSerializer<?, ?>> serializers) {
       serializers.forEach(serializer -> this.registeredSerializers.put(serializer.getToType(), serializer));
@@ -274,6 +282,11 @@ public class SerializerConfig {
       return this;
     }
 
+    public Builder setregisterPlaceholdersForCollectionEntries(boolean registerPlaceholdersForCollectionEntries) {
+      this.registerPlaceholdersForCollectionEntries = registerPlaceholdersForCollectionEntries;
+      return this;
+    }
+
     public SerializerConfig build() {
       return new SerializerConfig(
           this.registeredReplacers,
@@ -282,8 +295,8 @@ public class SerializerConfig {
           this.nodeNameStyle,
           this.safeMode,
           this.allowUnicode,
-          this.lineSeparator
-      );
+          this.lineSeparator,
+          this.registerPlaceholdersForCollectionEntries);
     }
   }
 }

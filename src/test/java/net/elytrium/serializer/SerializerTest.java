@@ -135,6 +135,8 @@ class SerializerTest {
     Assertions.assertEquals("test", settings.numeric1234Field);
     Assertions.assertEquals(0, settings.changedNameField.test);
     Assertions.assertEquals(2, settings.createdTestClass.stringsList.size());
+    Assertions.assertEquals("test-2",
+        Placeholders.replace(settings.createdTestClass.stringsList.get(1), "test"));
     Assertions.assertEquals(0, settings.testClass.x);
     Assertions.assertEquals(0, settings.testClass.y);
     Assertions.assertEquals(0, settings.testClass.z);
@@ -457,7 +459,8 @@ class SerializerTest {
 
   public static class CreatedTestClass {
 
-    public List<String> stringsList = Arrays.asList("test-1", "test-2");
+    @RegisterPlaceholders({"{PLACEHOLDER}"})
+    public List<String> stringsList = Arrays.asList("test-1", "{PLACEHOLDER}-2");
   }
 
   public static class ExternalDeserializedClass {

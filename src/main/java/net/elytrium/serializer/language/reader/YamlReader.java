@@ -24,6 +24,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -171,7 +172,15 @@ public class YamlReader extends AbstractReader {
         replacer = this.config.getAndCacheReplacer(placeholders.replacer());
       }
 
-      Placeholders.addPlaceholders(node.get(holder), replacer, placeholders.value());
+      Object value = node.get(holder);
+
+      if (this.config.isregisterPlaceholdersForCollectionEntries() && value instanceof Collection<?> collection) {
+        for (Object entry : collection) {
+          Placeholders.addPlaceholders(entry, replacer, placeholders.value());
+        }
+      } else {
+        Placeholders.addPlaceholders(value, replacer, placeholders.value());
+      }
     }
   }
 
