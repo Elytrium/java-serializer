@@ -89,7 +89,7 @@ class SerializerTest {
       }
     }
 
-    Assertions.assertEquals("final value", settings.finalField);
+    Assertions.assertEquals("\uD83D\uDD25 final value", settings.finalField);
     Assertions.assertEquals("regular \"value\"", settings.regularField);
     Assertions.assertEquals((float) Math.PI, settings.regularFloatField);
     Assertions.assertEquals(Math.E, settings.regularDoubleField);
@@ -264,7 +264,7 @@ class SerializerTest {
     }
 
     @Final
-    public String finalField = "final value";
+    public String finalField = "\uD83D\uDD25 final value";
 
     public String regularField = "regular \"value\"";
 

@@ -217,8 +217,8 @@ public class YamlWriter extends AbstractWriter {
       char highSurrogate = 0;
       for (char character : characters) {
         if (highSurrogate != 0) {
-          highSurrogate = 0;
           this.writeCharacter0(Character.toCodePoint(highSurrogate, character));
+          highSurrogate = 0;
         } else if (Character.isHighSurrogate(character)) {
           highSurrogate = character;
         } else {

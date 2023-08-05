@@ -50,6 +50,7 @@ public class YamlReader extends AbstractReader {
   private int seekIndent;
   private boolean tempRestoreNewLine;
   private boolean bracketOpened;
+  private boolean startOfFile = true;
 
   private StringBuilder spacesBuffer;
 
@@ -212,8 +213,14 @@ public class YamlReader extends AbstractReader {
 
   @Override
   public Map<Object, Object> readMap(Type keyType, Type valueType) {
+    boolean startOfFile = this.startOfFile;
     synchronized (this) {
-      return this.readMapByMarker(keyType, valueType, this.readRawIgnoreEmpty());
+      char marker = this.readRawIgnoreEmpty();
+      if (startOfFile) {
+        this.setTempRestoreNewLine();
+      }
+
+      return this.readMapByMarker(keyType, valueType, marker);
     }
   }
 
@@ -923,6 +930,8 @@ public class YamlReader extends AbstractReader {
 
   @Override
   public char readRaw() {
+    this.startOfFile = false;
+
     boolean shouldIndent = !this.isReuseBuffer();
     char character = super.readRaw();
     if (character == AbstractReader.NEW_LINE) {
