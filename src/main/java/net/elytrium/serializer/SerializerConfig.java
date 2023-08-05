@@ -137,46 +137,46 @@ public class SerializerConfig {
 
   @Nullable
   @SuppressWarnings("unchecked")
-  public <T, F> ClassSerializer<T, F> getRegisteredSerializer(Class<?> to) {
-    while (to != null && to != Object.class) {
-      var serializer = (ClassSerializer<T, F>) this.registeredSerializers.get(to);
+  public <T, P> PlaceholderReplacer<T, P> getRegisteredReplacer(Class<?> clazz) {
+    while (clazz != null && clazz != Object.class) {
+      var serializer = (PlaceholderReplacer<T, P>) this.registeredReplacers.get(clazz);
       if (serializer == null) {
-        for (Class<?> classInterface : to.getInterfaces()) {
-          serializer = (ClassSerializer<T, F>) this.registeredSerializers.get(classInterface);
-          if (serializer != null) {
-            return serializer;
-          }
-        }
-
-        to = to.getSuperclass();
-      } else {
-        return serializer;
-      }
-    }
-
-    return (ClassSerializer<T, F>) this.registeredSerializers.get(to);
-  }
-
-  @Nullable
-  @SuppressWarnings("unchecked")
-  public <T, P> PlaceholderReplacer<T, P> getRegisteredReplacer(Class<?> to) {
-    while (to != null && to != Object.class) {
-      var serializer = (PlaceholderReplacer<T, P>) this.registeredReplacers.get(to);
-      if (serializer == null) {
-        for (Class<?> classInterface : to.getInterfaces()) {
+        for (Class<?> classInterface : clazz.getInterfaces()) {
           serializer = (PlaceholderReplacer<T, P>) this.registeredReplacers.get(classInterface);
           if (serializer != null) {
             return serializer;
           }
         }
 
-        to = to.getSuperclass();
+        clazz = clazz.getSuperclass();
       } else {
         return serializer;
       }
     }
 
-    return (PlaceholderReplacer<T, P>) this.registeredReplacers.get(to);
+    return (PlaceholderReplacer<T, P>) this.registeredReplacers.get(clazz);
+  }
+
+  @Nullable
+  @SuppressWarnings("unchecked")
+  public <T, F> ClassSerializer<T, F> getRegisteredSerializer(Class<?> clazz) {
+    while (clazz != null && clazz != Object.class) {
+      var serializer = (ClassSerializer<T, F>) this.registeredSerializers.get(clazz);
+      if (serializer == null) {
+        for (Class<?> classInterface : clazz.getInterfaces()) {
+          serializer = (ClassSerializer<T, F>) this.registeredSerializers.get(classInterface);
+          if (serializer != null) {
+            return serializer;
+          }
+        }
+
+        clazz = clazz.getSuperclass();
+      } else {
+        return serializer;
+      }
+    }
+
+    return (ClassSerializer<T, F>) this.registeredSerializers.get(clazz);
   }
 
   public int getRegisteredSerializers() {
@@ -206,29 +206,46 @@ public class SerializerConfig {
     private boolean allowUnicode = false;
     private String lineSeparator = System.lineSeparator();
 
-    public Builder registerSerializer(ClassSerializer<?, ?> serializer) {
-      this.registeredSerializers.put(serializer.getToType(), serializer);
-      return this;
-    }
-
     public Builder registerSerializer(Collection<ClassSerializer<?, ?>> serializers) {
       serializers.forEach(serializer -> this.registeredSerializers.put(serializer.getToType(), serializer));
       return this;
     }
 
-    public Builder registerReplacer(PlaceholderReplacer<?, ?> serializer) {
-      Type[] actualTypeArguments = ((ParameterizedType) serializer.getClass().getGenericSuperclass()).getActualTypeArguments();
-      this.registeredReplacers.put(
-          actualTypeArguments[0] instanceof Class<?> clazz
-              ? clazz
-              : (Class<?>) ((ParameterizedType) actualTypeArguments[0]).getRawType(),
-          serializer
-      );
+    public Builder registerSerializer(ClassSerializer<?, ?> serializer) {
+      this.registeredSerializers.put(serializer.getToType(), serializer);
       return this;
     }
 
     public Builder registerReplacer(Collection<PlaceholderReplacer<?, ?>> replacers) {
       replacers.forEach(this::registerReplacer);
+      return this;
+    }
+
+    public Builder registerReplacer(PlaceholderReplacer<?, ?> serializer) {
+      Class<?> valueClass = null;
+      for (Type interfaceType : serializer.getClass().getGenericInterfaces()) {
+        if (interfaceType instanceof ParameterizedType type && type.getRawType() == PlaceholderReplacer.class) {
+          Type placeholderType = type.getActualTypeArguments()[0];
+          valueClass = placeholderType instanceof Class<?> clazz ? clazz : (Class<?>) ((ParameterizedType) placeholderType).getRawType();
+        }
+      }
+
+      if (valueClass == null) {
+        throw new IllegalStateException(
+            "Failed to determine value class, please use SerializerConfig.Builder#registerPlaceholder(Class, PlaceholderReplacer)"
+        );
+      }
+
+      return this.registerReplacer(valueClass, serializer);
+    }
+
+    public Builder registerReplacer(Map<Class<?>, PlaceholderReplacer<?, ?>> replacers) {
+      replacers.forEach(this::registerReplacer);
+      return this;
+    }
+
+    public Builder registerReplacer(Class<?> valueClass, PlaceholderReplacer<?, ?> serializer) {
+      this.registeredReplacers.put(valueClass, serializer);
       return this;
     }
 
