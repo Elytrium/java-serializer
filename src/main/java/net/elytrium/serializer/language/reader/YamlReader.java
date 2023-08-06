@@ -49,6 +49,8 @@ public class YamlReader extends AbstractReader {
 
   private int currentIndent;
   private int seekIndent;
+  private int nodeIndent;
+  private int newLineIndent;
   private boolean tempRestoreNewLine;
   private boolean bracketOpened;
   private boolean startOfFile = true;
@@ -804,6 +806,11 @@ public class YamlReader extends AbstractReader {
         }
       }
       default -> {
+        if (!nodeName && (marker == '|' || marker == '>')) {
+          this.readMultilineStringFromMarker(marker, result);
+          break;
+        }
+
         if (marker == '#') {
           this.skipComments(marker, false);
           break;
@@ -844,6 +851,91 @@ public class YamlReader extends AbstractReader {
     }
 
     return result.toString();
+  }
+
+  private void readMultilineStringFromMarker(char marker, StringBuilder result) {
+    boolean keepNewLines = switch (marker) {
+      case '>' -> false;
+      case '|' -> true;
+      default -> throw new IllegalStateException("Invalid multiline marker: " + marker);
+    };
+
+    char chomping = NEW_LINE;
+    marker = this.readRawIgnoreEmpty();
+    if (marker == '+' || marker == '-') {
+      chomping = marker;
+      marker = this.readRawIgnoreEmpty();
+    }
+
+    int fixedIndent = 0;
+    if (marker >= '1' && marker <= '9') {
+      fixedIndent = marker - '0';
+      marker = this.readRawIgnoreEmpty();
+    }
+
+    if (marker != NEW_LINE) {
+      throw new IllegalStateException("Got illegal marker while reading multiline string: " + marker);
+    }
+
+    marker = this.readRawIgnoreEmpty();
+    int indentOffset = this.currentIndent - this.nodeIndent;
+    if (indentOffset == 0) {
+      throw new IllegalStateException("String should be indented");
+    }
+
+    if (fixedIndent == 0) {
+      fixedIndent = indentOffset;
+    }
+
+    if (fixedIndent > indentOffset) {
+      throw new IllegalStateException("Indentation marker does not match current indent offset: " + indentOffset);
+    }
+
+    boolean firstLine = true;
+    int newLineCount = 0;
+    while (fixedIndent <= indentOffset) {
+      if (marker == NEW_LINE) {
+        newLineCount++;
+        marker = this.readRawIgnoreEmpty();
+        indentOffset = (marker == NEW_LINE ? this.newLineIndent : this.currentIndent) - this.nodeIndent;
+      } else {
+        if (!keepNewLines && newLineCount > 0) {
+          if (newLineCount == 1) {
+            result.append(' ');
+          }
+        }
+
+        for (int i = 0; i < newLineCount - (keepNewLines ? 0 : 1); i++) {
+          result.append('\n');
+        }
+
+        if (newLineCount != 0 || firstLine) {
+          for (int i = 0; i < indentOffset - fixedIndent; i++) {
+            result.append(' ');
+          }
+
+          firstLine = false;
+        }
+
+        newLineCount = 0;
+        result.append(marker);
+        marker = this.readRaw();
+      }
+    }
+
+    switch (chomping) {
+      case '-' -> newLineCount = 0;
+      case '+' -> {
+
+      }
+      default -> newLineCount = 1;
+    }
+
+    for (int i = 0; i < newLineCount; i++) {
+      result.append('\n');
+    }
+
+    this.setReuseBuffer();
   }
 
   @Override
@@ -932,19 +1024,25 @@ public class YamlReader extends AbstractReader {
 
   @Override
   public void setSeek() {
-    this.seekIndent = this.currentIndent;
+    synchronized (this) {
+      this.seekIndent = this.currentIndent;
+    }
     super.setSeek();
   }
 
   @Override
   public void setSeekFromMarker(char marker) {
-    this.seekIndent = this.currentIndent - 1;
+    synchronized (this) {
+      this.seekIndent = this.currentIndent - 1;
+    }
     super.setSeekFromMarker(marker);
   }
 
   @Override
   public void unsetSeek() {
-    this.currentIndent = this.seekIndent;
+    synchronized (this) {
+      this.currentIndent = this.seekIndent;
+    }
     super.unsetSeek();
   }
 
@@ -952,18 +1050,25 @@ public class YamlReader extends AbstractReader {
   public char readRaw() {
     this.startOfFile = false;
 
-    boolean shouldIndent = !this.isReuseBuffer();
-    char character = super.readRaw();
-    if (character == AbstractReader.NEW_LINE) {
-      this.currentIndent = 0;
-    } else if (shouldIndent) {
-      ++this.currentIndent;
-    }
+    synchronized (this) {
+      boolean shouldIndent = !this.isReuseBuffer();
+      char character = super.readRaw();
+      if (character == AbstractReader.NEW_LINE) {
+        this.newLineIndent = this.currentIndent + 1;
+        this.currentIndent = 0;
+      } else if (shouldIndent) {
+        ++this.currentIndent;
+      }
 
-    return character;
+      return character;
+    }
   }
 
   private String readNodeNameByMarker(char marker) {
+    synchronized (this) {
+      this.nodeIndent = this.currentIndent;
+    }
+
     while (true) {
       if (this.skipComments(marker, false) || this.skipComments(this.readRawIgnoreEmpty(), true)) {
         marker = this.readRaw();
