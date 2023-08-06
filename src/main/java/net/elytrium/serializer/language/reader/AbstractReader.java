@@ -49,6 +49,7 @@ public abstract class AbstractReader {
   private boolean reuseBuffer;
   private boolean seekEnabled;
   private CarriageType carriageType = CarriageType.UNKNOWN;
+  private boolean backupPreferred;
 
   public AbstractReader(SerializerConfig config, BufferedReader reader) {
     this.config = config;
@@ -389,6 +390,14 @@ public abstract class AbstractReader {
   public void clearSeek() {
     this.seekBuffer.clear();
     this.seekEnabled = false;
+  }
+
+  public boolean isBackupPreferred() {
+    return this.backupPreferred;
+  }
+
+  protected void setBackupPreferred() {
+    this.backupPreferred = true;
   }
 
   private enum CarriageType {

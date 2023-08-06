@@ -23,6 +23,9 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import net.elytrium.serializer.LoadResult;
 import net.elytrium.serializer.SerializerConfig;
 import net.elytrium.serializer.exceptions.SerializableReadException;
@@ -31,6 +34,8 @@ import net.elytrium.serializer.language.reader.AbstractReader;
 import net.elytrium.serializer.language.writer.AbstractWriter;
 
 public abstract class AbstractSerializable {
+
+  private static final DateTimeFormatter BACKUP_DATE_PATTERN = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH.mm.ss");
 
   private SerializerConfig config;
 
@@ -58,6 +63,13 @@ public abstract class AbstractSerializable {
         this.save(path);
         this.load(path); // Load again, because it now exists.
       }
+      case BACKUP_PREFERRED -> {
+        if (this.config.isBackupOnErrors()) {
+          this.backup(path);
+        }
+
+        this.save(path);
+      }
       default -> throw new IllegalStateException("Invalid LoadResult.");
     }
 
@@ -67,8 +79,7 @@ public abstract class AbstractSerializable {
   public LoadResult load(Path path) {
     if (Files.exists(path)) {
       try {
-        this.load(Files.newBufferedReader(path));
-        return LoadResult.SUCCESS;
+        return this.load(Files.newBufferedReader(path)) ? LoadResult.SUCCESS : LoadResult.BACKUP_PREFERRED;
       } catch (IOException e) {
         throw new SerializableReadException(e);
       }
@@ -77,8 +88,10 @@ public abstract class AbstractSerializable {
     }
   }
 
-  public void load(BufferedReader reader) {
-    this.getReader(reader).readSerializableObject(this, this.getClass());
+  public boolean load(BufferedReader reader) {
+    AbstractReader abstractReader = this.getReader(reader);
+    abstractReader.readSerializableObject(this, this.getClass());
+    return !abstractReader.isBackupPreferred();
   }
 
   @SuppressFBWarnings("NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE")
@@ -95,6 +108,22 @@ public abstract class AbstractSerializable {
     this.getWriter(writer).writeSerializableObject(this, this.getClass());
     try {
       writer.flush();
+    } catch (IOException e) {
+      throw new SerializableWriteException(e);
+    }
+  }
+
+  public void backup(Path path) {
+    try {
+      Path parent = path.getParent();
+      if (parent == null) {
+        throw new NullPointerException("Config parent path is null for " + path);
+      }
+
+      String now = LocalDateTime.now().format(AbstractSerializable.BACKUP_DATE_PATTERN);
+      String newFileName = path.getFileName() + "_backup_" + now;
+      Path configFileCopy = parent.resolve(newFileName);
+      Files.copy(path, configFileCopy, StandardCopyOption.REPLACE_EXISTING);
     } catch (IOException e) {
       throw new SerializableWriteException(e);
     }

@@ -30,15 +30,7 @@ import net.elytrium.serializer.placeholders.PlaceholderReplacer;
 
 public class SerializerConfig {
 
-  public static final SerializerConfig DEFAULT = new SerializerConfig(
-      new HashMap<>(),
-      new HashMap<>(),
-      NameStyle.CAMEL_CASE,
-      NameStyle.KEBAB_CASE,
-      false,
-      false,
-      System.lineSeparator(),
-      true);
+  public static final SerializerConfig DEFAULT = new SerializerConfig.Builder().build();
 
   private final Map<Class<? extends PlaceholderReplacer<?, ?>>, PlaceholderReplacer<?, ?>> cachedReplacers = new HashMap<>();
   private final Map<Class<? extends ClassSerializer<?, ?>>, ClassSerializer<?, ?>> cachedSerializers = new HashMap<>();
@@ -50,10 +42,12 @@ public class SerializerConfig {
   private final boolean allowUnicode;
   private final String lineSeparator;
   private final boolean registerPlaceholdersForCollectionEntries;
+  private final boolean logMissingFields;
+  private final boolean backupOnErrors;
 
   private SerializerConfig(Map<Class<?>, PlaceholderReplacer<?, ?>> registeredReplacers, Map<Class<?>, ClassSerializer<?, ?>> registeredSerializers,
                            NameStyle fieldNameStyle, NameStyle nodeNameStyle, boolean safeMode, boolean allowUnicode, String lineSeparator,
-                           boolean registerPlaceholdersForCollectionEntries) {
+                           boolean registerPlaceholdersForCollectionEntries, boolean logMissingFields, boolean backupOnErrors) {
     this.registeredReplacers = registeredReplacers;
     this.registeredSerializers = registeredSerializers;
     this.fieldNameStyle = fieldNameStyle;
@@ -62,6 +56,8 @@ public class SerializerConfig {
     this.allowUnicode = allowUnicode;
     this.lineSeparator = lineSeparator;
     this.registerPlaceholdersForCollectionEntries = registerPlaceholdersForCollectionEntries;
+    this.logMissingFields = logMissingFields;
+    this.backupOnErrors = backupOnErrors;
   }
 
   /**
@@ -198,8 +194,16 @@ public class SerializerConfig {
     return this.lineSeparator;
   }
 
-  public boolean isregisterPlaceholdersForCollectionEntries() {
+  public boolean isRegisterPlaceholdersForCollectionEntries() {
     return this.registerPlaceholdersForCollectionEntries;
+  }
+
+  public boolean isLogMissingFields() {
+    return this.logMissingFields;
+  }
+
+  public boolean isBackupOnErrors() {
+    return this.backupOnErrors;
   }
 
   public static class Builder {
@@ -213,6 +217,8 @@ public class SerializerConfig {
     private boolean allowUnicode = false;
     private String lineSeparator = System.lineSeparator();
     private boolean registerPlaceholdersForCollectionEntries = true;
+    private boolean logMissingFields = true;
+    private boolean backupOnErrors = true;
 
     public Builder registerSerializer(Collection<ClassSerializer<?, ?>> serializers) {
       serializers.forEach(serializer -> this.registeredSerializers.put(serializer.getToType(), serializer));
@@ -282,8 +288,18 @@ public class SerializerConfig {
       return this;
     }
 
-    public Builder setregisterPlaceholdersForCollectionEntries(boolean registerPlaceholdersForCollectionEntries) {
+    public Builder setRegisterPlaceholdersForCollectionEntries(boolean registerPlaceholdersForCollectionEntries) {
       this.registerPlaceholdersForCollectionEntries = registerPlaceholdersForCollectionEntries;
+      return this;
+    }
+
+    public Builder setLogMissingFields(boolean logMissingFields) {
+      this.logMissingFields = logMissingFields;
+      return this;
+    }
+
+    public Builder setBackupOnErrors(boolean backupOnErrors) {
+      this.backupOnErrors = backupOnErrors;
       return this;
     }
 
@@ -296,7 +312,9 @@ public class SerializerConfig {
           this.safeMode,
           this.allowUnicode,
           this.lineSeparator,
-          this.registerPlaceholdersForCollectionEntries);
+          this.registerPlaceholdersForCollectionEntries,
+          this.logMissingFields,
+          this.backupOnErrors);
     }
   }
 }

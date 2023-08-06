@@ -130,7 +130,10 @@ public class YamlReader extends AbstractReader {
               }
             } catch (ReflectiveOperationException e) {
               this.skipGuessingType();
-              YamlReader.LOGGER.log(Level.WARNING, "Skipping field due to exception caught", e);
+              this.setBackupPreferred();
+              if (this.config.isLogMissingFields()) {
+                YamlReader.LOGGER.log(Level.WARNING, "Skipping field due to exception caught", e);
+              }
             }
 
             this.readSerializableObjectEntryJoin();
@@ -174,7 +177,7 @@ public class YamlReader extends AbstractReader {
 
       Object value = node.get(holder);
 
-      if (this.config.isregisterPlaceholdersForCollectionEntries() && value instanceof Collection<?> collection) {
+      if (this.config.isRegisterPlaceholdersForCollectionEntries() && value instanceof Collection<?> collection) {
         for (Object entry : collection) {
           Placeholders.addPlaceholders(entry, replacer, placeholders.value());
         }

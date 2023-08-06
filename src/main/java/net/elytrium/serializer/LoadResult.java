@@ -20,5 +20,6 @@ package net.elytrium.serializer;
 public enum LoadResult {
 
   SUCCESS,
-  CONFIG_NOT_EXISTS
+  CONFIG_NOT_EXISTS,
+  BACKUP_PREFERRED
 }
