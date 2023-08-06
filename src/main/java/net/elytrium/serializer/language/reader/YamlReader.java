@@ -750,6 +750,7 @@ public class YamlReader extends AbstractReader {
     StringBuilder result = new StringBuilder();
     switch (marker) {
       case '"' -> {
+        int newLineCount = 0;
         while ((marker = this.readRaw()) != '"') {
           if (this.isEndMarker(marker)) {
             if (nodeName) {
@@ -758,13 +759,25 @@ public class YamlReader extends AbstractReader {
 
             this.readRawIgnoreEmpty();
             this.setReuseBuffer();
-            result.append(' ');
-          } else if (marker == '\\') {
-            for (char character : Character.toChars(this.getEscapeChar())) {
-              result.append(character);
-            }
+            newLineCount++;
           } else {
-            result.append(marker);
+            if (newLineCount == 1) {
+              result.append(' ');
+            } else {
+              for (int i = 1; i < newLineCount; i++) {
+                result.append(NEW_LINE);
+              }
+            }
+
+            newLineCount = 0;
+
+            if (marker == '\\') {
+              for (char character : Character.toChars(this.getEscapeChar())) {
+                result.append(character);
+              }
+            } else {
+              result.append(marker);
+            }
           }
         }
 
@@ -776,6 +789,7 @@ public class YamlReader extends AbstractReader {
         }
       }
       case '\'' -> {
+        int newLineCount = 0;
         while (true) {
           marker = this.readRaw();
           if (this.isEndMarker(marker)) {
@@ -785,16 +799,28 @@ public class YamlReader extends AbstractReader {
 
             this.readRawIgnoreEmpty();
             this.setReuseBuffer();
-            result.append(' ');
-          } else if (marker == '\'') {
-            if (this.readRaw() == '\'') { // 'text1 ''text2'' text3' reads as "text 'text2' text3".
-              result.append('\'');
-            } else {
-              this.setReuseBuffer();
-              break;
-            }
+            newLineCount++;
           } else {
-            result.append(marker);
+            if (newLineCount == 1) {
+              result.append(' ');
+            } else {
+              for (int i = 1; i < newLineCount; i++) {
+                result.append(NEW_LINE);
+              }
+            }
+
+            newLineCount = 0;
+
+            if (marker == '\'') {
+              if (this.readRaw() == '\'') { // 'text1 ''text2'' text3' reads as "text 'text2' text3".
+                result.append('\'');
+              } else {
+                this.setReuseBuffer();
+                break;
+              }
+            } else {
+              result.append(marker);
+            }
           }
         }
 
@@ -824,8 +850,8 @@ public class YamlReader extends AbstractReader {
         while (nodeName
             ? (marker != ':')
             : (!this.isEndMarker(marker)
-               && (marker != ',' || this.bracketOpened)
-               && (!Character.isWhitespace(marker) || !this.skipComments(this.readRaw(), true)))) {
+            && (marker != ',' || this.bracketOpened)
+            && (!Character.isWhitespace(marker) || !this.skipComments(this.readRaw(), true)))) {
           if (nodeName && this.isEndMarker(marker)) {
             throw new IllegalStateException("Got a new line in node name: " + result);
           }
@@ -906,7 +932,7 @@ public class YamlReader extends AbstractReader {
         }
 
         for (int i = 0; i < newLineCount - (keepNewLines ? 0 : 1); i++) {
-          result.append('\n');
+          result.append(NEW_LINE);
         }
 
         if (newLineCount != 0 || firstLine) {
@@ -932,7 +958,7 @@ public class YamlReader extends AbstractReader {
     }
 
     for (int i = 0; i < newLineCount; i++) {
-      result.append('\n');
+      result.append(NEW_LINE);
     }
 
     this.setReuseBuffer();
