@@ -47,10 +47,10 @@ public class SerializerConfig {
   private final int commentValueIndent;
 
   private SerializerConfig(Map<Class<?>, PlaceholderReplacer<?, ?>> registeredReplacers, Map<Class<?>, ClassSerializer<?, ?>> registeredSerializers,
-                           String lineSeparator,
-                           NameStyle fieldNameStyle, NameStyle nodeNameStyle,
-                           boolean safeMode, boolean allowUnicode, boolean registerPlaceholdersForCollectionEntries, boolean logMissingFields,
-                           boolean backupOnErrors, int commentValueIndent) {
+      String lineSeparator,
+      NameStyle fieldNameStyle, NameStyle nodeNameStyle,
+      boolean safeMode, boolean allowUnicode, boolean registerPlaceholdersForCollectionEntries, boolean logMissingFields, boolean backupOnErrors,
+      int commentValueIndent) {
     this.registeredReplacers = registeredReplacers;
     this.registeredSerializers = registeredSerializers;
     this.lineSeparator = lineSeparator;
@@ -341,7 +341,8 @@ public class SerializerConfig {
           this.registerPlaceholdersForCollectionEntries,
           this.logMissingFields,
           this.backupOnErrors,
-          this.commentValueIndent);
+          this.commentValueIndent
+      );
     }
   }
 }

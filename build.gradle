@@ -41,7 +41,7 @@ test() {
 checkstyle() {
   toolVersion = "10.12.1"
 
-  configFile = file(".config/checkstyle/checkstyle.xml")
+  configFile = file("$rootDir/.config/checkstyle/checkstyle.xml")
   configProperties = ["configDirectory": "$rootDir/.config/checkstyle"]
   maxErrors = 0
   maxWarnings = 0
@@ -56,7 +56,7 @@ spotbugsMain() {
 }
 
 license() {
-  header = file("HEADER.txt")
+  header = file("$rootDir/HEADER.txt")
 
   exclude("**/*.yml")
 }
@@ -73,8 +73,8 @@ tasks.register("javadocJar", Jar) {
 
 javadoc() {
   options.setEncoding("UTF-8")
-  options.setSource("17")
-  options.links("https://docs.oracle.com/en/java/javase/17/docs/api/")
+  options.setSource("19")
+  options.links("https://docs.oracle.com/en/java/javase/19/docs/api/")
   options.addStringOption("Xdoclint:none", "-quiet")
   if (JavaVersion.current() >= JavaVersion.VERSION_1_9 && JavaVersion.current() < JavaVersion.VERSION_12) {
     options.addBooleanOption("-no-module-directories", true)
@@ -82,8 +82,8 @@ javadoc() {
 }
 
 artifacts() {
-  archives(javadocJar)
   archives(sourcesJar)
+  archives(javadocJar)
   archives(jar)
 }
 
@@ -125,7 +125,7 @@ publishing() {
         developer() {
           id = "hevav"
           name = "Petr Ilin"
-          email = "p.ilin@elytrium.ru"
+          email = "p.ilin@elytrium.net"
         }
       }
       scm() {
@@ -142,7 +142,7 @@ publishing() {
 }
 
 signing() {
-  if (project.hasProperty("signing.keyId")) {
+  if (rootProject.hasProperty("signing.keyId")) {
     sign(publishing.publications.publication)
     sign(configurations.archives)
   }

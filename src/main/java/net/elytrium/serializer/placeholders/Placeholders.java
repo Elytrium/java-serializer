@@ -38,8 +38,7 @@ public class Placeholders {
     Placeholders.addPlaceholders(System.identityHashCode(value), replacer, placeholders);
   }
 
-  public static void addPlaceholders(Object value, PlaceholderReplacer<?, ?> replacer, boolean wrapWithBraces,
-                                     String... placeholders) {
+  public static void addPlaceholders(Object value, PlaceholderReplacer<?, ?> replacer, boolean wrapWithBraces, String... placeholders) {
     Placeholders.addPlaceholders(System.identityHashCode(value), replacer, wrapWithBraces, placeholders);
   }
 
@@ -47,21 +46,19 @@ public class Placeholders {
     Placeholders.addPlaceholders(hash, replacer, true, placeholders);
   }
 
-  public static void addPlaceholders(int hash, PlaceholderReplacer<?, ?> replacer, boolean wrapWithBraces,
-                                     String... placeholders) {
+  public static void addPlaceholders(int hash, PlaceholderReplacer<?, ?> replacer, boolean wrapWithBraces, String... placeholders) {
     Placeholders.PLACEHOLDERS.put(hash, new Placeholderable<>(replacer, placeholders, wrapWithBraces));
-  }
-
-  public static void setPlaceholders(int hash, PlaceholderReplacer<?, ?> fallbackReplacer, String... placeholders) {
-    Placeholders.setPlaceholders(hash, fallbackReplacer, true, placeholders);
   }
 
   public static void setPlaceholders(Object value, PlaceholderReplacer<?, ?> fallbackReplacer, String... placeholders) {
     Placeholders.setPlaceholders(System.identityHashCode(value), fallbackReplacer, placeholders);
   }
 
-  public static void setPlaceholders(int hash, PlaceholderReplacer<?, ?> fallbackReplacer, boolean wrapWithBraces,
-                                     String... placeholders) {
+  public static void setPlaceholders(int hash, PlaceholderReplacer<?, ?> fallbackReplacer, String... placeholders) {
+    Placeholders.setPlaceholders(hash, fallbackReplacer, true, placeholders);
+  }
+
+  public static void setPlaceholders(int hash, PlaceholderReplacer<?, ?> fallbackReplacer, boolean wrapWithBraces, String... placeholders) {
     Placeholderable<?, ?> placeholderable = Placeholders.PLACEHOLDERS.get(hash);
     if (placeholderable == null) {
       if (fallbackReplacer != null) {
@@ -141,13 +138,8 @@ public class Placeholders {
 
     private void setPlaceholders(String[] placeholders, boolean wrapWithBraces) {
       this.placeholders = Stream.of(placeholders)
-          .map(placeholder ->
-              this.replacer.transformPlaceholder(Placeholders.Placeholderable.toPlaceholderName(placeholder, wrapWithBraces)))
+          .map(placeholder -> wrapWithBraces && !(placeholder.startsWith("{") && placeholder.endsWith("}")) ? '{' + placeholder + '}' : placeholder)
           .toArray(length -> (P[]) Array.newInstance(this.placeholdersClass, length));
-    }
-
-    private static String toPlaceholderName(String name, boolean wrapWithBraces) {
-      return wrapWithBraces && (!name.startsWith("{") || !name.endsWith("}")) ? '{' + name + '}' : name;
     }
   }
 }

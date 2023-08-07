@@ -132,7 +132,7 @@ public class YamlReader extends AbstractReader {
               this.skipGuessingType();
               this.setBackupPreferred();
               if (this.config.isLogMissingFields()) {
-                YamlReader.LOGGER.log(Level.WARNING, "Skipping node" + nodeName + "due to exception caught", e);
+                YamlReader.LOGGER.log(Level.WARNING, "Skipping node " + nodeName + " due to exception caught", e);
               }
             }
 
@@ -878,6 +878,7 @@ public class YamlReader extends AbstractReader {
     return result.toString();
   }
 
+  @SuppressWarnings("DuplicatedCode")
   private void readMultilineStringFromMarker(char marker, StringBuilder result) {
     boolean keepNewLines = switch (marker) {
       case '>' -> false;
@@ -930,12 +931,12 @@ public class YamlReader extends AbstractReader {
           }
         }
 
-        for (int i = 0; i < newLineCount - (keepNewLines ? 0 : 1); ++i) {
+        for (int i = newLineCount - (keepNewLines ? 0 : 1) - 1; i >= 0; --i) {
           result.append(AbstractReader.NEW_LINE);
         }
 
         if (newLineCount != 0 || firstLine) {
-          for (int i = 0; i < indentOffset - fixedIndent; ++i) {
+          for (int i = indentOffset - fixedIndent - 1; i >= 0; --i) {
             result.append(' ');
           }
 
@@ -958,52 +959,6 @@ public class YamlReader extends AbstractReader {
 
     for (int i = 0; i < newLineCount; ++i) {
       result.append(AbstractReader.NEW_LINE);
-    }
-
-    this.setReuseBuffer();
-  }
-
-  private void skipMultilineStringFromMarker(char marker) {
-    if (marker != '>' && marker != '|') {
-      throw new IllegalStateException("Invalid multiline marker: " + marker);
-    }
-
-    marker = this.readRawIgnoreEmpty();
-    if (marker == '+' || marker == '-') {
-      marker = this.readRawIgnoreEmpty();
-    }
-
-    int fixedIndent = 0;
-    if (marker >= '1' && marker <= '9') {
-      fixedIndent = marker - '0';
-      marker = this.readRawIgnoreEmpty();
-    }
-
-    if (marker != AbstractReader.NEW_LINE) {
-      throw new IllegalStateException("Got illegal marker while skipping multiline string: " + marker);
-    }
-
-    marker = this.readRawIgnoreEmpty();
-    int indentOffset = this.currentIndent - this.nodeIndent;
-    if (indentOffset == 0) {
-      throw new IllegalStateException("String should be indented");
-    }
-
-    if (fixedIndent == 0) {
-      fixedIndent = indentOffset;
-    }
-
-    if (fixedIndent > indentOffset) {
-      throw new IllegalStateException("Indentation marker does not match current indent offset: " + indentOffset);
-    }
-
-    while (fixedIndent <= indentOffset) {
-      if (marker == AbstractReader.NEW_LINE) {
-        marker = this.readRawIgnoreEmpty();
-        indentOffset = (marker == AbstractReader.NEW_LINE ? this.newLineIndent : this.currentIndent) - this.nodeIndent;
-      } else {
-        marker = this.readRaw();
-      }
     }
 
     this.setReuseBuffer();
@@ -1071,6 +1026,53 @@ public class YamlReader extends AbstractReader {
         }
       }
     }
+  }
+
+  @SuppressWarnings("DuplicatedCode")
+  private void skipMultilineStringFromMarker(char marker) {
+    if (marker != '>' && marker != '|') {
+      throw new IllegalStateException("Invalid multiline marker: " + marker);
+    }
+
+    marker = this.readRawIgnoreEmpty();
+    if (marker == '+' || marker == '-') {
+      marker = this.readRawIgnoreEmpty();
+    }
+
+    int fixedIndent = 0;
+    if (marker >= '1' && marker <= '9') {
+      fixedIndent = marker - '0';
+      marker = this.readRawIgnoreEmpty();
+    }
+
+    if (marker != AbstractReader.NEW_LINE) {
+      throw new IllegalStateException("Got illegal marker while skipping multiline string: " + marker);
+    }
+
+    marker = this.readRawIgnoreEmpty();
+    int indentOffset = this.currentIndent - this.nodeIndent;
+    if (indentOffset == 0) {
+      throw new IllegalStateException("String should be indented");
+    }
+
+    if (fixedIndent == 0) {
+      fixedIndent = indentOffset;
+    }
+
+    if (fixedIndent > indentOffset) {
+      throw new IllegalStateException("Indentation marker does not match current indent offset: " + indentOffset);
+    }
+
+    while (fixedIndent <= indentOffset) {
+      if (marker == AbstractReader.NEW_LINE) {
+        marker = this.readRawIgnoreEmpty();
+        indentOffset = (marker == AbstractReader.NEW_LINE ? this.newLineIndent : this.currentIndent) - this.nodeIndent;
+      } else {
+        marker = this.readRaw();
+      }
+    }
+
+    this.setReuseBuffer();
   }
 
   @Override
