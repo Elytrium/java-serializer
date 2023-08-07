@@ -50,7 +50,7 @@ class SerializerTest {
 
   @Test
   void placeholdersTest() {
-    String stringWithPlaceholders = "{PLACEHOLDER1} {PLACEHOLDER2} {PLACEHOLDER3}";
+    String stringWithPlaceholders = "{PLACEHOLDER1} {PLACEHOLDER2} {placeholder3}";
     Placeholders.addPlaceholders(stringWithPlaceholders, new DefaultPlaceholderReplacer(), "placeholder3", "PLACEHOLDER1", "{PLACEHOLDER2}");
     Assertions.assertEquals("2 3 1", Placeholders.replace(stringWithPlaceholders, "1", "2", "3"));
     Placeholders.removePlaceholders(stringWithPlaceholders);
@@ -109,7 +109,7 @@ class SerializerTest {
         Placeholders.replace(settings.stringWithPlaceholders2, "placeholders", "string")
     );
     Assertions.assertEquals("value 1 value 2", Placeholders.replace(settings.anotherStringWithPlaceholders, "value 1", "value 2"));
-    Assertions.assertEquals("{PLACEHOLDER} {ANOTHER_PLACEHOLDER}", settings.anotherStringWithPlaceholders);
+    Assertions.assertEquals("PLACEHOLDER another-placeholder", settings.anotherStringWithPlaceholders);
     Assertions.assertEquals(2, settings.prepend.sameLine.append.nestedLists.size());
     Assertions.assertEquals(2, settings.objectListWithMaps.size());
     Assertions.assertEquals(3, settings.listOfString2ObjectMap.size());
@@ -274,14 +274,14 @@ class SerializerTest {
 
     public RegularEnum enumField = RegularEnum.TRUE;
 
-    @RegisterPlaceholders({"{TEST}", "test2"})
+    @RegisterPlaceholders({"{TEST}", "TEST2"})
     public String stringWithPlaceholders = "This is {TEST} with {TEST2}";
 
     @RegisterPlaceholders({"test2", "test"})
-    public String stringWithPlaceholders2 = "This is {TEST} with {TEST2}";
+    public String stringWithPlaceholders2 = "This is {test} with {test2}";
 
-    @RegisterPlaceholders({"PLACEHOLDER", "another-placeholder"})
-    public String anotherStringWithPlaceholders = "{PLACEHOLDER} {ANOTHER_PLACEHOLDER}";
+    @RegisterPlaceholders(value = {"PLACEHOLDER", "another-placeholder"}, wrapWithBraces = false)
+    public String anotherStringWithPlaceholders = "PLACEHOLDER another-placeholder";
 
     public Map<Integer, String> int2StringMap = SerializerTest.map(1, "v1", 15555, "v2", 44, "v3");
 

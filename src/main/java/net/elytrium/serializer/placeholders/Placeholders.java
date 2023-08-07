@@ -21,10 +21,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 @SuppressWarnings("unchecked")
@@ -41,22 +38,37 @@ public class Placeholders {
     Placeholders.addPlaceholders(System.identityHashCode(value), replacer, placeholders);
   }
 
+  public static void addPlaceholders(Object value, PlaceholderReplacer<?, ?> replacer, boolean wrapWithBraces,
+                                     String... placeholders) {
+    Placeholders.addPlaceholders(System.identityHashCode(value), replacer, wrapWithBraces, placeholders);
+  }
+
   public static void addPlaceholders(int hash, PlaceholderReplacer<?, ?> replacer, String... placeholders) {
-    Placeholders.PLACEHOLDERS.put(hash, new Placeholderable<>(replacer, placeholders));
+    Placeholders.addPlaceholders(hash, replacer, true, placeholders);
+  }
+
+  public static void addPlaceholders(int hash, PlaceholderReplacer<?, ?> replacer, boolean wrapWithBraces,
+                                     String... placeholders) {
+    Placeholders.PLACEHOLDERS.put(hash, new Placeholderable<>(replacer, placeholders, wrapWithBraces));
+  }
+
+  public static void setPlaceholders(int hash, PlaceholderReplacer<?, ?> fallbackReplacer, String... placeholders) {
+    Placeholders.setPlaceholders(hash, fallbackReplacer, true, placeholders);
   }
 
   public static void setPlaceholders(Object value, PlaceholderReplacer<?, ?> fallbackReplacer, String... placeholders) {
     Placeholders.setPlaceholders(System.identityHashCode(value), fallbackReplacer, placeholders);
   }
 
-  public static void setPlaceholders(int hash, PlaceholderReplacer<?, ?> fallbackReplacer, String... placeholders) {
+  public static void setPlaceholders(int hash, PlaceholderReplacer<?, ?> fallbackReplacer, boolean wrapWithBraces,
+                                     String... placeholders) {
     Placeholderable<?, ?> placeholderable = Placeholders.PLACEHOLDERS.get(hash);
     if (placeholderable == null) {
       if (fallbackReplacer != null) {
         Placeholders.addPlaceholders(hash, fallbackReplacer, placeholders);
       }
     } else {
-      placeholderable.setPlaceholders(placeholders);
+      placeholderable.setPlaceholders(placeholders, wrapWithBraces);
     }
   }
 
@@ -105,18 +117,14 @@ public class Placeholders {
 
   private static class Placeholderable<T, P> {
 
-    private static final ThreadLocal<Matcher> EXACTLY_MATCHES;
-    private static final ThreadLocal<Matcher> LOWERCASE;
-    private static final ThreadLocal<Matcher> UPPERCASE;
-
     private final PlaceholderReplacer<T, P> replacer;
     private final Class<P> placeholdersClass;
     private P[] placeholders;
 
-    private Placeholderable(PlaceholderReplacer<T, P> replacer, String[] placeholders) {
+    private Placeholderable(PlaceholderReplacer<T, P> replacer, String[] placeholders, boolean wrapWithBraces) {
       this.replacer = replacer;
       this.placeholdersClass = this.determinePlaceholdersClass();
-      this.setPlaceholders(placeholders);
+      this.setPlaceholders(placeholders, wrapWithBraces);
     }
 
     // https://cdn.discordapp.com/attachments/593589868777439233/1135283936726106153/3.png
@@ -131,31 +139,15 @@ public class Placeholders {
       throw new IllegalStateException();
     }
 
-    private void setPlaceholders(String[] placeholders) {
+    private void setPlaceholders(String[] placeholders, boolean wrapWithBraces) {
       this.placeholders = Stream.of(placeholders)
-          .map(placeholder -> this.replacer.transformPlaceholder(Placeholders.Placeholderable.toPlaceholderName(placeholder)))
+          .map(placeholder ->
+              this.replacer.transformPlaceholder(Placeholders.Placeholderable.toPlaceholderName(placeholder, wrapWithBraces)))
           .toArray(length -> (P[]) Array.newInstance(this.placeholdersClass, length));
     }
 
-    static {
-      Pattern exactlyMatches = Pattern.compile("^\\{(?!_)[A-Z\\d_]+(?<!_)}$");
-      EXACTLY_MATCHES = ThreadLocal.withInitial(() -> exactlyMatches.matcher(""));
-      Pattern lowercase = Pattern.compile("^(?!-)[a-z\\d-]+(?<!-)$");
-      LOWERCASE = ThreadLocal.withInitial(() -> lowercase.matcher(""));
-      Pattern uppercase = Pattern.compile("^(?!_)[A-Z\\d_]+(?<!_)$");
-      UPPERCASE = ThreadLocal.withInitial(() -> uppercase.matcher(""));
-    }
-
-    private static String toPlaceholderName(String name) {
-      if (Placeholders.Placeholderable.EXACTLY_MATCHES.get().reset(name).matches()) {
-        return name;
-      } else if (Placeholders.Placeholderable.LOWERCASE.get().reset(name).matches()) {
-        return '{' + name.toUpperCase(Locale.ROOT).replace('-', '_') + '}';
-      } else if (Placeholders.Placeholderable.UPPERCASE.get().reset(name).matches()) {
-        return '{' + name + '}';
-      } else {
-        throw new IllegalStateException("Invalid placeholder: " + name);
-      }
+    private static String toPlaceholderName(String name, boolean wrapWithBraces) {
+      return wrapWithBraces && (!name.startsWith("{") || !name.endsWith("}")) ? '{' + name + '}' : name;
     }
   }
 }

@@ -37,4 +37,6 @@ public @interface RegisterPlaceholders {
   String[] value();
 
   Class<? extends PlaceholderReplacer<?, ?>> replacer() default DefaultPlaceholderReplacer.class;
+
+  boolean wrapWithBraces() default true;
 }

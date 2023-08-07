@@ -178,10 +178,10 @@ public class YamlReader extends AbstractReader {
       Object value = node.get(holder);
       if (this.config.isRegisterPlaceholdersForCollectionEntries() && value instanceof Collection<?> collection) {
         for (Object entry : collection) {
-          Placeholders.addPlaceholders(entry, replacer, placeholders.value());
+          Placeholders.addPlaceholders(entry, replacer, placeholders.wrapWithBraces(), placeholders.value());
         }
       } else {
-        Placeholders.addPlaceholders(value, replacer, placeholders.value());
+        Placeholders.addPlaceholders(value, replacer, placeholders.wrapWithBraces(), placeholders.value());
       }
     }
   }
