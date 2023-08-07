@@ -17,7 +17,6 @@
 
 package net.elytrium.serializer.language.object;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -94,10 +93,14 @@ public abstract class AbstractSerializable {
     return !abstractReader.isBackupPreferred();
   }
 
-  @SuppressFBWarnings("NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE")
   public void save(Path path) {
     try {
-      Files.createDirectories(path.getParent());
+      Path parent = path.getParent();
+      if (parent == null) {
+        throw new NullPointerException("Config parent path is null for " + path);
+      }
+
+      Files.createDirectories(parent);
       this.save(Files.newBufferedWriter(path));
     } catch (IOException e) {
       throw new SerializableWriteException(e);
@@ -120,10 +123,11 @@ public abstract class AbstractSerializable {
         throw new NullPointerException("Config parent path is null for " + path);
       }
 
-      String now = LocalDateTime.now().format(AbstractSerializable.BACKUP_DATE_PATTERN);
-      String newFileName = path.getFileName() + "_backup_" + now;
-      Path configFileCopy = parent.resolve(newFileName);
-      Files.copy(path, configFileCopy, StandardCopyOption.REPLACE_EXISTING);
+      Files.copy(
+          path,
+          parent.resolve(path.getFileName() + "_backup_" + LocalDateTime.now().format(AbstractSerializable.BACKUP_DATE_PATTERN)),
+          StandardCopyOption.REPLACE_EXISTING
+      );
     } catch (IOException e) {
       throw new SerializableWriteException(e);
     }

@@ -36,25 +36,26 @@ public class SerializerConfig {
   private final Map<Class<? extends ClassSerializer<?, ?>>, ClassSerializer<?, ?>> cachedSerializers = new HashMap<>();
   private final Map<Class<?>, PlaceholderReplacer<?, ?>> registeredReplacers;
   private final Map<Class<?>, ClassSerializer<?, ?>> registeredSerializers;
+  private final String lineSeparator;
   private final NameStyle fieldNameStyle;
   private final NameStyle nodeNameStyle;
   private final boolean safeMode;
   private final boolean allowUnicode;
-  private final String lineSeparator;
   private final boolean registerPlaceholdersForCollectionEntries;
   private final boolean logMissingFields;
   private final boolean backupOnErrors;
 
   private SerializerConfig(Map<Class<?>, PlaceholderReplacer<?, ?>> registeredReplacers, Map<Class<?>, ClassSerializer<?, ?>> registeredSerializers,
-                           NameStyle fieldNameStyle, NameStyle nodeNameStyle, boolean safeMode, boolean allowUnicode, String lineSeparator,
-                           boolean registerPlaceholdersForCollectionEntries, boolean logMissingFields, boolean backupOnErrors) {
+      String lineSeparator,
+      NameStyle fieldNameStyle, NameStyle nodeNameStyle,
+      boolean safeMode, boolean allowUnicode, boolean registerPlaceholdersForCollectionEntries, boolean logMissingFields, boolean backupOnErrors) {
     this.registeredReplacers = registeredReplacers;
     this.registeredSerializers = registeredSerializers;
+    this.lineSeparator = lineSeparator;
     this.fieldNameStyle = fieldNameStyle;
     this.nodeNameStyle = nodeNameStyle;
     this.safeMode = safeMode;
     this.allowUnicode = allowUnicode;
-    this.lineSeparator = lineSeparator;
     this.registerPlaceholdersForCollectionEntries = registerPlaceholdersForCollectionEntries;
     this.logMissingFields = logMissingFields;
     this.backupOnErrors = backupOnErrors;
@@ -182,16 +183,16 @@ public class SerializerConfig {
     return this.cachedSerializers.size() + this.registeredSerializers.size();
   }
 
+  public String getLineSeparator() {
+    return this.lineSeparator;
+  }
+
   public boolean isSafeMode() {
     return this.safeMode;
   }
 
   public boolean isAllowUnicode() {
     return this.allowUnicode;
-  }
-
-  public String getLineSeparator() {
-    return this.lineSeparator;
   }
 
   public boolean isRegisterPlaceholdersForCollectionEntries() {
@@ -211,11 +212,17 @@ public class SerializerConfig {
     private final Map<Class<?>, PlaceholderReplacer<?, ?>> registeredReplacers = new HashMap<>();
     private final Map<Class<?>, ClassSerializer<?, ?>> registeredSerializers = new HashMap<>();
 
+    private String lineSeparator = System.lineSeparator();
     private NameStyle fieldNameStyle = NameStyle.CAMEL_CASE;
     private NameStyle nodeNameStyle = NameStyle.KEBAB_CASE;
+    /**
+     * @see SerializerConfig.Builder#setSafeMode(boolean)
+     */
     private boolean safeMode = false;
+    /**
+     * @see SerializerConfig.Builder#setAllowUnicode(boolean)
+     */
     private boolean allowUnicode = false;
-    private String lineSeparator = System.lineSeparator();
     private boolean registerPlaceholdersForCollectionEntries = true;
     private boolean logMissingFields = true;
     private boolean backupOnErrors = true;
@@ -273,11 +280,17 @@ public class SerializerConfig {
       return this;
     }
 
+    /**
+     * When true, bad numeric or decimal field value will be interpreted as 0 or 0.0
+     */
     public Builder setSafeMode(boolean safeMode) {
       this.safeMode = safeMode;
       return this;
     }
 
+    /**
+     * When false, most of unprintable characters will be written in escaped format like {@literal \}u1234{@literal \}u4321
+     */
     public Builder setAllowUnicode(boolean allowUnicode) {
       this.allowUnicode = allowUnicode;
       return this;
@@ -307,14 +320,15 @@ public class SerializerConfig {
       return new SerializerConfig(
           this.registeredReplacers,
           this.registeredSerializers,
+          this.lineSeparator,
           this.fieldNameStyle,
           this.nodeNameStyle,
           this.safeMode,
           this.allowUnicode,
-          this.lineSeparator,
           this.registerPlaceholdersForCollectionEntries,
           this.logMissingFields,
-          this.backupOnErrors);
+          this.backupOnErrors
+      );
     }
   }
 }

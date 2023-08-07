@@ -103,7 +103,7 @@ public abstract class AbstractReader {
       }
 
       try {
-        Object value = this.readAndDeserializeByType(serializerStack, type);
+        Object value = this.readAndDeserializeByType(holder, type, serializerStack);
         if (type == Integer.class || type == int.class) {
           node.setInt(holder, ((Long) value).intValue());
         } else if (type == Short.class || type == short.class) {
@@ -139,8 +139,8 @@ public abstract class AbstractReader {
     return clazz;
   }
 
-  protected Object readAndDeserializeByType(Deque<ClassSerializer<?, Object>> serializerStack, Type type) {
-    Object value = this.readByType(type);
+  protected Object readAndDeserializeByType(Object holder, Type type, Deque<ClassSerializer<?, Object>> serializerStack) {
+    Object value = this.readByType(holder, type);
     while (!serializerStack.isEmpty()) {
       ClassSerializer<?, Object> classSerializer = serializerStack.pop();
       if (classSerializer.getFromType().isInstance(value)) {
@@ -156,6 +156,7 @@ public abstract class AbstractReader {
   }
 
   public Object readByType(Type type) {
+    // TODO Use old map value when possible while reading.
     return this.readByType(null, type);
   }
 

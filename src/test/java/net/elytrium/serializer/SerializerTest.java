@@ -135,8 +135,7 @@ class SerializerTest {
     Assertions.assertEquals("test", settings.numeric1234Field);
     Assertions.assertEquals(0, settings.changedNameField.test);
     Assertions.assertEquals(2, settings.createdTestClass.stringsList.size());
-    Assertions.assertEquals("test-2",
-        Placeholders.replace(settings.createdTestClass.stringsList.get(1), "test"));
+    Assertions.assertEquals("test-2", Placeholders.replace(settings.createdTestClass.stringsList.get(1), "test"));
     Assertions.assertEquals(0, settings.testClass.x);
     Assertions.assertEquals(0, settings.testClass.y);
     Assertions.assertEquals(0, settings.testClass.z);

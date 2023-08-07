@@ -43,6 +43,7 @@ import net.elytrium.serializer.placeholders.DefaultPlaceholderReplacer;
 import net.elytrium.serializer.placeholders.PlaceholderReplacer;
 import net.elytrium.serializer.placeholders.Placeholders;
 
+@SuppressWarnings({"SizeReplaceableByIsEmpty", "StringRepeatCanBeUsed"}) // Ignore modern methods, because we support up to Java 8.
 public class YamlReader extends AbstractReader {
 
   private static final Logger LOGGER = Logger.getLogger(YamlReader.class.getName());
@@ -111,24 +112,17 @@ public class YamlReader extends AbstractReader {
               Field node = nodeFieldMap.get(nodeName);
               if (node == null) {
                 throw new NoSuchFieldException(nodeName);
-              }
-
-              try {
-                node.setAccessible(true);
-              } catch (Exception e) {
-                this.skipGuessingType();
-                continue;
-              }
-
-              int modifiers = node.getModifiers();
-              if (!Modifier.isStatic(modifiers) && !Modifier.isFinal(modifiers) && !Modifier.isTransient(modifiers)
-                  && node.getAnnotation(Final.class) == null && node.getType().getAnnotation(Final.class) == null
-                  && node.getAnnotation(Transient.class) == null && node.getType().getAnnotation(Transient.class) == null) {
-                Placeholders.removePlaceholders(node.get(holder));
-                this.readNode(holder, node);
-                this.updatePlaceholders(holder, node);
               } else {
-                this.skipNode(node);
+                int modifiers = node.getModifiers();
+                if (!Modifier.isStatic(modifiers) && !Modifier.isFinal(modifiers) && !Modifier.isTransient(modifiers)
+                    && node.getAnnotation(Final.class) == null && node.getType().getAnnotation(Final.class) == null
+                    && node.getAnnotation(Transient.class) == null && node.getType().getAnnotation(Transient.class) == null) {
+                  Placeholders.removePlaceholders(node.get(holder));
+                  this.readNode(holder, node);
+                  this.updatePlaceholders(holder, node);
+                } else {
+                  this.skipNode(node);
+                }
               }
             } catch (ReflectiveOperationException e) {
               this.skipGuessingType();
@@ -170,7 +164,7 @@ public class YamlReader extends AbstractReader {
     if (placeholders != null) {
       PlaceholderReplacer<?, ?> replacer = null;
       if (placeholders.replacer() == DefaultPlaceholderReplacer.class) {
-        replacer = this.config.getRegisteredReplacer(holder.getClass());
+        replacer = this.config.getRegisteredReplacer(node.getType());
       }
 
       if (replacer == null) {
@@ -178,7 +172,6 @@ public class YamlReader extends AbstractReader {
       }
 
       Object value = node.get(holder);
-
       if (this.config.isRegisterPlaceholdersForCollectionEntries() && value instanceof Collection<?> collection) {
         for (Object entry : collection) {
           Placeholders.addPlaceholders(entry, replacer, placeholders.value());
@@ -517,7 +510,7 @@ public class YamlReader extends AbstractReader {
           throw new IllegalStateException("Class " + clazz + " for map key is not supported!");
         }
 
-        key = this.readAndDeserializeByType(serializerStack, clazz);
+        key = this.readAndDeserializeByType(null, clazz, serializerStack);
       }
     } else {
       throw new IllegalStateException("Type " + keyType + " for map key are not supported yet!");
@@ -759,13 +752,13 @@ public class YamlReader extends AbstractReader {
 
             this.readRawIgnoreEmpty();
             this.setReuseBuffer();
-            newLineCount++;
+            ++newLineCount;
           } else {
             if (newLineCount == 1) {
               result.append(' ');
             } else {
-              for (int i = 1; i < newLineCount; i++) {
-                result.append(NEW_LINE);
+              for (int i = 1; i < newLineCount; ++i) {
+                result.append(AbstractReader.NEW_LINE);
               }
             }
 
@@ -799,13 +792,13 @@ public class YamlReader extends AbstractReader {
 
             this.readRawIgnoreEmpty();
             this.setReuseBuffer();
-            newLineCount++;
+            ++newLineCount;
           } else {
             if (newLineCount == 1) {
               result.append(' ');
             } else {
-              for (int i = 1; i < newLineCount; i++) {
-                result.append(NEW_LINE);
+              for (int i = 1; i < newLineCount; ++i) {
+                result.append(AbstractReader.NEW_LINE);
               }
             }
 
@@ -850,8 +843,8 @@ public class YamlReader extends AbstractReader {
         while (nodeName
             ? (marker != ':')
             : (!this.isEndMarker(marker)
-            && (marker != ',' || this.bracketOpened)
-            && (!Character.isWhitespace(marker) || !this.skipComments(this.readRaw(), true)))) {
+               && (marker != ',' || this.bracketOpened)
+               && (!Character.isWhitespace(marker) || !this.skipComments(this.readRaw(), true)))) {
           if (nodeName && this.isEndMarker(marker)) {
             throw new IllegalStateException("Got a new line in node name: " + result);
           }
@@ -886,7 +879,7 @@ public class YamlReader extends AbstractReader {
       default -> throw new IllegalStateException("Invalid multiline marker: " + marker);
     };
 
-    char chomping = NEW_LINE;
+    char chomping = AbstractReader.NEW_LINE;
     marker = this.readRawIgnoreEmpty();
     if (marker == '+' || marker == '-') {
       chomping = marker;
@@ -899,7 +892,7 @@ public class YamlReader extends AbstractReader {
       marker = this.readRawIgnoreEmpty();
     }
 
-    if (marker != NEW_LINE) {
+    if (marker != AbstractReader.NEW_LINE) {
       throw new IllegalStateException("Got illegal marker while reading multiline string: " + marker);
     }
 
@@ -917,13 +910,13 @@ public class YamlReader extends AbstractReader {
       throw new IllegalStateException("Indentation marker does not match current indent offset: " + indentOffset);
     }
 
-    boolean firstLine = true;
     int newLineCount = 0;
-    while (fixedIndent <= indentOffset) {
-      if (marker == NEW_LINE) {
-        newLineCount++;
+    boolean firstLine = true;
+    while (indentOffset >= fixedIndent) {
+      if (marker == AbstractReader.NEW_LINE) {
+        ++newLineCount;
         marker = this.readRawIgnoreEmpty();
-        indentOffset = (marker == NEW_LINE ? this.newLineIndent : this.currentIndent) - this.nodeIndent;
+        indentOffset = (marker == AbstractReader.NEW_LINE ? this.newLineIndent : this.currentIndent) - this.nodeIndent;
       } else {
         if (!keepNewLines && newLineCount > 0) {
           if (newLineCount == 1) {
@@ -931,12 +924,12 @@ public class YamlReader extends AbstractReader {
           }
         }
 
-        for (int i = 0; i < newLineCount - (keepNewLines ? 0 : 1); i++) {
-          result.append(NEW_LINE);
+        for (int i = 0; i < newLineCount - (keepNewLines ? 0 : 1); ++i) {
+          result.append(AbstractReader.NEW_LINE);
         }
 
         if (newLineCount != 0 || firstLine) {
-          for (int i = 0; i < indentOffset - fixedIndent; i++) {
+          for (int i = 0; i < indentOffset - fixedIndent; ++i) {
             result.append(' ');
           }
 
@@ -957,8 +950,8 @@ public class YamlReader extends AbstractReader {
       default -> newLineCount = 1;
     }
 
-    for (int i = 0; i < newLineCount; i++) {
-      result.append(NEW_LINE);
+    for (int i = 0; i < newLineCount; ++i) {
+      result.append(AbstractReader.NEW_LINE);
     }
 
     this.setReuseBuffer();
@@ -1004,6 +997,11 @@ public class YamlReader extends AbstractReader {
         }
       }
       default -> {
+        if (marker == '#') {
+          this.skipComments(marker, false);
+          break;
+        }
+
         while (nodeName
             ? (marker != ':')
             // Here we don't need to care about bad comments, so we can ignore whitespace check, see YamlReader#skipComments(char, boolean) for details.
@@ -1053,6 +1051,7 @@ public class YamlReader extends AbstractReader {
     synchronized (this) {
       this.seekIndent = this.currentIndent;
     }
+
     super.setSeek();
   }
 
@@ -1061,6 +1060,7 @@ public class YamlReader extends AbstractReader {
     synchronized (this) {
       this.seekIndent = this.currentIndent - 1;
     }
+
     super.setSeekFromMarker(marker);
   }
 
@@ -1069,13 +1069,13 @@ public class YamlReader extends AbstractReader {
     synchronized (this) {
       this.currentIndent = this.seekIndent;
     }
+
     super.unsetSeek();
   }
 
   @Override
   public char readRaw() {
     this.startOfFile = false;
-
     synchronized (this) {
       boolean shouldIndent = !this.isReuseBuffer();
       char character = super.readRaw();
