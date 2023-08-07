@@ -317,7 +317,7 @@ class SerializerTest {
     @OverrideNameStyle(node = NameStyle.COBOL_CASE)
     public Prepend prepend = new Prepend();
 
-    @Comment(@CommentValue("PREPEND class comment"))
+    @Comment(@CommentValue(value = " PREPEND class comment", commentValueIndent = 0))
     public static class Prepend {
 
       @OverrideNameStyle(node = NameStyle.COBOL_CASE)

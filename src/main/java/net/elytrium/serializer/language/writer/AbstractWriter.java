@@ -191,6 +191,7 @@ public abstract class AbstractWriter {
             this.writeLine();
           }
           this.writeCommentStart(comment.at());
+          this.writeCommentValueIndent(comment.at(), this.getCommentValueIndent(comment, line));
           this.writeRaw(line.value());
           if (shouldJoin) {
             this.writeCommentEnd(comment.at());
@@ -200,7 +201,21 @@ public abstract class AbstractWriter {
     }
   }
 
+  private int getCommentValueIndent(Comment comment, CommentValue value) {
+    if (value.commentValueIndent() != -1) {
+      return value.commentValueIndent();
+    }
+
+    if (comment.commentValueIndent() != -1) {
+      return comment.commentValueIndent();
+    }
+
+    return this.config.getCommentValueIndent();
+  }
+
   public abstract void writeCommentStart(Comment.At at);
+
+  public abstract void writeCommentValueIndent(Comment.At at, int indent);
 
   public abstract void writeCommentEnd(Comment.At at);
 

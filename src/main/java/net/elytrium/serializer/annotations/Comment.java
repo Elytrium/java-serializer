@@ -40,6 +40,8 @@ public @interface Comment {
    */
   At at() default At.PREPEND;
 
+  int commentValueIndent() default -1;
+
   enum At {
 
     /**

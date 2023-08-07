@@ -29,6 +29,8 @@ public @interface CommentValue {
 
   Type type() default Type.TEXT;
 
+  int commentValueIndent() default -1;
+
   enum Type {
 
     TEXT,

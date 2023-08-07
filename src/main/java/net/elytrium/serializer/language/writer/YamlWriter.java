@@ -51,8 +51,13 @@ public class YamlWriter extends AbstractWriter {
         this.writeRaw(this.currentIndent);
         this.writeRaw('#');
       }
+    }
+  }
 
-      for (int i = 0; i < this.config.getCommentValueIndent(); ++i) {
+  @Override
+  public void writeCommentValueIndent(Comment.At at, int indent) {
+    synchronized (this) {
+      for (int i = 0; i < indent; ++i) {
         this.writeRaw(' ');
       }
     }
