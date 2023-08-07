@@ -111,7 +111,11 @@ public class YamlReader extends AbstractReader {
             try {
               Field node = nodeFieldMap.get(nodeName);
               if (node == null) {
-                throw new NoSuchFieldException(nodeName);
+                this.skipGuessingType();
+                this.setBackupPreferred();
+                if (this.config.isLogMissingFields()) {
+                  YamlReader.LOGGER.log(Level.WARNING, "Skipping node " + nodeName + " due to missing field");
+                }
               } else {
                 int modifiers = node.getModifiers();
                 if (!Modifier.isStatic(modifiers) && !Modifier.isFinal(modifiers) && !Modifier.isTransient(modifiers)
@@ -128,7 +132,7 @@ public class YamlReader extends AbstractReader {
               this.skipGuessingType();
               this.setBackupPreferred();
               if (this.config.isLogMissingFields()) {
-                YamlReader.LOGGER.log(Level.WARNING, "Skipping field due to exception caught", e);
+                YamlReader.LOGGER.log(Level.WARNING, "Skipping node" + nodeName + "due to exception caught", e);
               }
             }
 
@@ -385,6 +389,7 @@ public class YamlReader extends AbstractReader {
         }
       } // Got '-' after newline, fall through here.
       case '-': {
+        this.nodeIndent = this.currentIndent;
         char nextMarker = '-';
         int correctIndent = this.currentIndent;
         while (nextMarker == '-' && correctIndent == this.currentIndent) {
@@ -558,7 +563,7 @@ public class YamlReader extends AbstractReader {
       }
       case '[' -> this.readListByMarker(Object.class, marker);
       case '{' -> this.readMapByMarker(Object.class, Object.class, marker);
-      case '"', '\'' -> this.readStringFromMarker(marker, false);
+      case '"', '\'', '>', '|' -> this.readStringFromMarker(marker, false);
       default -> {
         if (this.isNullSkippedByMarker(marker)) {
           yield null;
@@ -610,7 +615,7 @@ public class YamlReader extends AbstractReader {
       }
       case '[' -> this.skipListByMarker(marker);
       case '{' -> this.skipMapByMarker(marker);
-      case '"', '\'' -> this.skipStringFromMarker(marker, false);
+      case '"', '\'', '>', '|' -> this.skipStringFromMarker(marker, false);
       default -> {
         if (this.isNullSkippedByMarker(marker)) {
           return;
@@ -656,6 +661,7 @@ public class YamlReader extends AbstractReader {
         }
       } // Got '-' after newline, fall through here.
       case '-': {
+        this.nodeIndent = this.currentIndent;
         char nextMarker = '-';
         int correctIndent = this.currentIndent;
         while (nextMarker == '-' && correctIndent == this.currentIndent) {
@@ -957,6 +963,52 @@ public class YamlReader extends AbstractReader {
     this.setReuseBuffer();
   }
 
+  private void skipMultilineStringFromMarker(char marker) {
+    if (marker != '>' && marker != '|') {
+      throw new IllegalStateException("Invalid multiline marker: " + marker);
+    }
+
+    marker = this.readRawIgnoreEmpty();
+    if (marker == '+' || marker == '-') {
+      marker = this.readRawIgnoreEmpty();
+    }
+
+    int fixedIndent = 0;
+    if (marker >= '1' && marker <= '9') {
+      fixedIndent = marker - '0';
+      marker = this.readRawIgnoreEmpty();
+    }
+
+    if (marker != AbstractReader.NEW_LINE) {
+      throw new IllegalStateException("Got illegal marker while skipping multiline string: " + marker);
+    }
+
+    marker = this.readRawIgnoreEmpty();
+    int indentOffset = this.currentIndent - this.nodeIndent;
+    if (indentOffset == 0) {
+      throw new IllegalStateException("String should be indented");
+    }
+
+    if (fixedIndent == 0) {
+      fixedIndent = indentOffset;
+    }
+
+    if (fixedIndent > indentOffset) {
+      throw new IllegalStateException("Indentation marker does not match current indent offset: " + indentOffset);
+    }
+
+    while (fixedIndent <= indentOffset) {
+      if (marker == AbstractReader.NEW_LINE) {
+        marker = this.readRawIgnoreEmpty();
+        indentOffset = (marker == AbstractReader.NEW_LINE ? this.newLineIndent : this.currentIndent) - this.nodeIndent;
+      } else {
+        marker = this.readRaw();
+      }
+    }
+
+    this.setReuseBuffer();
+  }
+
   @Override
   public void skipString() {
     synchronized (this) {
@@ -999,6 +1051,11 @@ public class YamlReader extends AbstractReader {
       default -> {
         if (marker == '#') {
           this.skipComments(marker, false);
+          break;
+        }
+
+        if (!nodeName && (marker == '|' || marker == '>')) {
+          this.skipMultilineStringFromMarker(marker);
           break;
         }
 
