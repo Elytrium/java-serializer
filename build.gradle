@@ -10,11 +10,11 @@ plugins() {
 }
 
 this.group = "net.elytrium"
-this.version = "1.0.2-SNAPSHOT"
+this.version = "1.0.2"
 
 compileJava() {
-  sourceCompatibility = "19"
-  targetCompatibility = "19"
+  sourceCompatibility = "17"
+  targetCompatibility = "17"
   options.getRelease().set(8)
 
   options.setEncoding("UTF-8")
@@ -73,8 +73,8 @@ tasks.register("javadocJar", Jar) {
 
 javadoc() {
   options.setEncoding("UTF-8")
-  options.setSource("19")
-  options.links("https://docs.oracle.com/en/java/javase/19/docs/api/")
+  options.setSource("17")
+  options.links("https://docs.oracle.com/en/java/javase/17/docs/api/")
   options.addStringOption("Xdoclint:none", "-quiet")
   if (JavaVersion.current() >= JavaVersion.VERSION_1_9 && JavaVersion.current() < JavaVersion.VERSION_12) {
     options.addBooleanOption("-no-module-directories", true)
