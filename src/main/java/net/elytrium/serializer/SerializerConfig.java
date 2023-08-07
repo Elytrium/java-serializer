@@ -44,11 +44,13 @@ public class SerializerConfig {
   private final boolean registerPlaceholdersForCollectionEntries;
   private final boolean logMissingFields;
   private final boolean backupOnErrors;
+  private final int commentValueIndent;
 
   private SerializerConfig(Map<Class<?>, PlaceholderReplacer<?, ?>> registeredReplacers, Map<Class<?>, ClassSerializer<?, ?>> registeredSerializers,
-      String lineSeparator,
-      NameStyle fieldNameStyle, NameStyle nodeNameStyle,
-      boolean safeMode, boolean allowUnicode, boolean registerPlaceholdersForCollectionEntries, boolean logMissingFields, boolean backupOnErrors) {
+                           String lineSeparator,
+                           NameStyle fieldNameStyle, NameStyle nodeNameStyle,
+                           boolean safeMode, boolean allowUnicode, boolean registerPlaceholdersForCollectionEntries, boolean logMissingFields,
+                           boolean backupOnErrors, int commentValueIndent) {
     this.registeredReplacers = registeredReplacers;
     this.registeredSerializers = registeredSerializers;
     this.lineSeparator = lineSeparator;
@@ -59,6 +61,7 @@ public class SerializerConfig {
     this.registerPlaceholdersForCollectionEntries = registerPlaceholdersForCollectionEntries;
     this.logMissingFields = logMissingFields;
     this.backupOnErrors = backupOnErrors;
+    this.commentValueIndent = commentValueIndent;
   }
 
   /**
@@ -207,6 +210,10 @@ public class SerializerConfig {
     return this.backupOnErrors;
   }
 
+  public int getCommentValueIndent() {
+    return this.commentValueIndent;
+  }
+
   public static class Builder {
 
     private final Map<Class<?>, PlaceholderReplacer<?, ?>> registeredReplacers = new HashMap<>();
@@ -226,6 +233,7 @@ public class SerializerConfig {
     private boolean registerPlaceholdersForCollectionEntries = true;
     private boolean logMissingFields = true;
     private boolean backupOnErrors = true;
+    private int commentValueIndent = 0;
 
     public Builder registerSerializer(Collection<ClassSerializer<?, ?>> serializers) {
       serializers.forEach(serializer -> this.registeredSerializers.put(serializer.getToType(), serializer));
@@ -316,6 +324,11 @@ public class SerializerConfig {
       return this;
     }
 
+    public Builder setCommentValueIndent(int commentValueIndent) {
+      this.commentValueIndent = commentValueIndent;
+      return this;
+    }
+
     public SerializerConfig build() {
       return new SerializerConfig(
           this.registeredReplacers,
@@ -327,8 +340,8 @@ public class SerializerConfig {
           this.allowUnicode,
           this.registerPlaceholdersForCollectionEntries,
           this.logMissingFields,
-          this.backupOnErrors
-      );
+          this.backupOnErrors,
+          this.commentValueIndent);
     }
   }
 }

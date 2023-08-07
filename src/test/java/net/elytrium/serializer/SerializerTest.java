@@ -258,7 +258,7 @@ class SerializerTest {
       public String deserialize(String from) {
         return from.trim().isEmpty() ? null : from;
       }
-    }).registerSerializer(new PathSerializer()).build();
+    }).registerSerializer(new PathSerializer()).setCommentValueIndent(1).build();
 
     Settings() {
       super(Settings.CONFIG);
@@ -311,13 +311,13 @@ class SerializerTest {
     );
 
     @Comment({
-        @CommentValue(" PREPEND comment Line 1"),
-        @CommentValue(" PREPEND comment Line 2")
+        @CommentValue("PREPEND comment Line 1"),
+        @CommentValue("PREPEND comment Line 2")
     })
     @OverrideNameStyle(node = NameStyle.COBOL_CASE)
     public Prepend prepend = new Prepend();
 
-    @Comment(@CommentValue(" PREPEND class comment"))
+    @Comment(@CommentValue("PREPEND class comment"))
     public static class Prepend {
 
       @OverrideNameStyle(node = NameStyle.COBOL_CASE)
@@ -326,8 +326,8 @@ class SerializerTest {
       @NewLine
       @Comment(
           value = {
-              @CommentValue(" fieldWithCommentAtSameLine comment"),
-              @CommentValue(" You can still see this comment, but why do you need this?")
+              @CommentValue("fieldWithCommentAtSameLine comment"),
+              @CommentValue("You can still see this comment, but why do you need this?")
           },
           at = Comment.At.SAME_LINE
       )
@@ -336,15 +336,15 @@ class SerializerTest {
       @NewLine(amount = 3)
       @Comment(
           value = {
-              @CommentValue(" SAME_LINE comment Line 1")
+              @CommentValue("SAME_LINE comment Line 1")
           },
           at = Comment.At.SAME_LINE
       )
       @Comment(
           value = {
-              @CommentValue(" sameLine APPEND second comment Line 1"),
+              @CommentValue("sameLine APPEND second comment Line 1"),
               @CommentValue(type = CommentValue.Type.NEW_LINE),
-              @CommentValue(" sameLine APPEND second comment Line 2")
+              @CommentValue("sameLine APPEND second comment Line 2")
           },
           at = Comment.At.APPEND
       )
@@ -358,8 +358,8 @@ class SerializerTest {
 
           @Comment(
               value = {
-                  @CommentValue(" field1 APPEND comment"),
-                  @CommentValue(" Second line")
+                  @CommentValue("field1 APPEND comment"),
+                  @CommentValue("Second line")
               },
               at = Comment.At.APPEND
           )
@@ -367,8 +367,8 @@ class SerializerTest {
 
           @Comment(
               value = {
-                  @CommentValue(" field2 PREPEND comment"),
-                  @CommentValue(" Line 2")
+                  @CommentValue("field2 PREPEND comment"),
+                  @CommentValue("Line 2")
               },
               at = Comment.At.PREPEND
           )
