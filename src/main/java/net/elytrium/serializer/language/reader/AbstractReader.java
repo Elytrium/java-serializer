@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.annotation.Nullable;
 import net.elytrium.serializer.SerializerConfig;
 import net.elytrium.serializer.annotations.Serializer;
 import net.elytrium.serializer.custom.ClassSerializer;
@@ -61,15 +62,35 @@ public abstract class AbstractReader {
     this.reader = reader;
   }
 
-  public abstract void readSerializableObject(Object holder, Class<?> clazz);
+  public void readSerializableObject(Object holder, Class<?> clazz) {
+    this.readSerializableObject(null, holder, clazz);
+  }
+  
+  public abstract void readSerializableObject(@Nullable Field owner, Object holder, Class<?> clazz);
 
-  public abstract String readNodeName();
+  public String readNodeName() {
+    return this.readNodeName(null);
+  }
+  
+  public abstract String readNodeName(@Nullable Field owner);
 
-  public abstract void readBeginSerializableObject();
+  public void readBeginSerializableObject() {
+    this.readBeginSerializableObject(null);
+  }
+  
+  public abstract void readBeginSerializableObject(@Nullable Field owner);
 
-  public abstract void readSerializableObjectEntryJoin();
+  public void readSerializableObjectEntryJoin() {
+    this.readSerializableObjectEntryJoin(null);
+  }
+  
+  public abstract void readSerializableObjectEntryJoin(@Nullable Field owner);
 
-  public abstract boolean readEndSerializableObject();
+  public boolean readEndSerializableObject() {
+    return this.readEndSerializableObject(null);
+  }
+  
+  public abstract boolean readEndSerializableObject(@Nullable Field owner);
 
   public void readNode(Object holder, Field node) {
     synchronized (this) {
@@ -103,7 +124,7 @@ public abstract class AbstractReader {
       }
 
       try {
-        Object value = this.readAndDeserializeByType(holder, type, serializerStack);
+        Object value = this.readAndDeserializeByType(node, holder, type, serializerStack);
         if (type == Integer.class || type == int.class) {
           node.setInt(holder, ((Long) value).intValue());
         } else if (type == Short.class || type == short.class) {
@@ -139,8 +160,8 @@ public abstract class AbstractReader {
     return clazz;
   }
 
-  protected Object readAndDeserializeByType(Object holder, Type type, Deque<ClassSerializer<?, Object>> serializerStack) {
-    Object value = this.readByType(holder, type);
+  protected Object readAndDeserializeByType(@Nullable Field owner, Object holder, Type type, Deque<ClassSerializer<?, Object>> serializerStack) {
+    Object value = this.readByType(owner, holder, type);
     while (!serializerStack.isEmpty()) {
       ClassSerializer<?, Object> classSerializer = serializerStack.pop();
       if (classSerializer.getFromType().isInstance(value)) {
@@ -152,39 +173,47 @@ public abstract class AbstractReader {
   }
 
   public Object readByField(Field field) {
-    return this.readByType(field.getGenericType());
+    return this.readByType(field, field.getGenericType());
   }
 
   public Object readByType(Type type) {
-    // TODO Use old map value when possible while reading.
     return this.readByType(null, type);
   }
 
-  public Object readByType(Object holder, Type type) {
+  public Object readByType(@Nullable Field owner, Type type) {
+    // TODO Use old map value when possible while reading.
+    return this.readByType(owner, null, type);
+  }
+
+  public Object readByType(@Nullable Object holder, Type type) {
+    return this.readByType(null, holder, type);
+  }
+
+  public Object readByType(@Nullable Field owner, @Nullable Object holder, Type type) {
     synchronized (this) {
       if (type == Object.class) {
-        return this.readGuessingType();
+        return this.readGuessingType(owner);
       } else if (type instanceof ParameterizedType parameterizedType) {
         Class<?> clazz = (Class<?>) parameterizedType.getRawType();
         Type[] actualTypeArguments = parameterizedType.getActualTypeArguments();
-        return Map.class.isAssignableFrom(clazz) ? this.readMap(actualTypeArguments[0], actualTypeArguments[1])
-            : List.class.isAssignableFrom(clazz) ? this.readList(actualTypeArguments[0])
-            : this.readGuessingType();
+        return Map.class.isAssignableFrom(clazz) ? this.readMap(owner, actualTypeArguments[0], actualTypeArguments[1])
+            : List.class.isAssignableFrom(clazz) ? this.readList(owner, actualTypeArguments[0])
+            : this.readGuessingType(owner);
       } else if (type instanceof Class<?> clazz) {
         if (Map.class.isAssignableFrom(clazz)) {
-          return this.readMap();
+          return this.readMap(owner);
         } else if (List.class.isAssignableFrom(clazz)) {
-          return this.readList();
+          return this.readList(owner);
         } else if (String.class.isAssignableFrom(clazz)) {
-          return this.readString();
+          return this.readString(owner);
         } else if (Character.class.isAssignableFrom(clazz) || char.class.isAssignableFrom(clazz)) {
-          return this.readCharacter();
+          return this.readCharacter(owner);
         } else if (clazz.isEnum()) {
-          return this.readEnum(clazz);
+          return this.readEnum(owner, clazz);
         } else if (Boolean.class.isAssignableFrom(clazz) || boolean.class.isAssignableFrom(clazz)) {
-          return this.readBoolean();
+          return this.readBoolean(owner);
         } else if (Number.class.isAssignableFrom(clazz) || clazz.isPrimitive()) {
-          return this.readNumber(clazz);
+          return this.readNumber(owner, clazz);
         } else {
           try {
             Object result;
@@ -196,10 +225,10 @@ public abstract class AbstractReader {
               result = constructor.newInstance();
             }
 
-            this.readSerializableObject(result, clazz);
+            this.readSerializableObject(owner, result, clazz);
             return result;
           } catch (ReflectiveOperationException e) {
-            Object value = this.readGuessingType();
+            Object value = this.readGuessingType(owner);
             ClassSerializer<?, Object> classSerializer = this.config.getRegisteredSerializer(clazz);
             if (classSerializer != null) {
               value = classSerializer.deserialize(value);
@@ -214,38 +243,66 @@ public abstract class AbstractReader {
     }
   }
 
-  public abstract Object readGuessingType();
+  public Object readGuessingType() {
+    return this.readGuessingType(null);
+  }
+  
+  public abstract Object readGuessingType(@Nullable Field owner);
 
-  public Map<Object, Object> readMap() {
-    return this.readMap(Object.class, Object.class);
+  public Map<Object, Object> readMap(@Nullable Field owner) {
+    return this.readMap(owner, Object.class, Object.class);
   }
 
-  public abstract Map<Object, Object> readMap(Type keyType, Type valueType);
+  public Map<Object, Object> readMap(Type keyType, Type valueType) {
+    return this.readMap(null, keyType, valueType);
+  }
+  
+  public abstract Map<Object, Object> readMap(@Nullable Field owner, Type keyType, Type valueType);
 
-  public List<Object> readList() {
-    return this.readList(Object.class);
+  public List<Object> readList(@Nullable Field owner) {
+    return this.readList(owner, Object.class);
   }
 
-  public abstract List<Object> readList(Type type);
+  public List<Object> readList(Type type) {
+    return this.readList(null, type);
+  }
+  
+  public abstract List<Object> readList(@Nullable Field owner, Type type);
 
-  public abstract String readString();
+  public String readString() {
+    return this.readString(null);
+  }
+  
+  public abstract String readString(@Nullable Field owner);
 
-  public abstract Character readCharacter();
+  public Character readCharacter() {
+    return this.readCharacter(null);
+  }
+  
+  public abstract Character readCharacter(@Nullable Field owner);
 
   @SuppressWarnings("unchecked")
-  public <T extends Enum<T>> T readEnum(Class<?> enumClass) {
-    return Enum.valueOf((Class<T>) enumClass, this.readString());
+  public <T extends Enum<T>> T readEnum(@Nullable Field owner, Class<?> enumClass) {
+    return Enum.valueOf((Class<T>) enumClass, this.readString(owner));
   }
 
-  public abstract Boolean readBoolean();
+  public Boolean readBoolean() {
+    return this.readBoolean(null);
+  }
+  
+  public abstract Boolean readBoolean(@Nullable Field owner);
 
   public Number readNumber(Class<?> clazz) {
+    return this.readNumber(null, clazz);
+  }
+
+  public Number readNumber(@Nullable Field owner, Class<?> clazz) {
     synchronized (this) {
       boolean decimal = Float.class.isAssignableFrom(clazz) || float.class.isAssignableFrom(clazz)
           || Double.class.isAssignableFrom(clazz) || double.class.isAssignableFrom(clazz);
       try {
         // Read about casts: https://pastebin.com/wgR7zB7p
-        return decimal ? (Number) this.readDouble() : (Number) this.readLong();
+        return decimal ? (Number) this.readDouble(owner) : (Number) this.readLong(owner);
       } catch (NumberFormatException e) {
         if (this.config.isSafeMode()) {
           AbstractReader.LOGGER.log(Level.WARNING, "Can't read number due to exception caught, overwriting the value by 0", e);
@@ -257,39 +314,71 @@ public abstract class AbstractReader {
     }
   }
 
-  public abstract Double readDouble();
+  public Double readDouble() {
+    return this.readDouble(null);
+  }
+  
+  public abstract Double readDouble(@Nullable Field owner);
 
-  public abstract Long readLong();
+  public Long readLong() {
+    return this.readLong(null);
+  }
+  
+  public abstract Long readLong(@Nullable Field owner);
 
   public void skipNode(Field node) {
-    this.skipNode(node.getType());
+    this.skipNode(node, node.getType());
   }
 
   public void skipNode(Class<?> clazz) {
+    this.skipNode(null, clazz);
+  }
+
+  public void skipNode(@Nullable Field owner, Class<?> clazz) {
     if (Map.class.isAssignableFrom(clazz)) {
-      this.skipMap();
+      this.skipMap(owner);
     } else if (List.class.isAssignableFrom(clazz)) {
-      this.skipList();
+      this.skipList(owner);
     } else if (clazz.isEnum()
         || String.class.isAssignableFrom(clazz)
         || Boolean.class.isAssignableFrom(clazz) || boolean.class.isAssignableFrom(clazz)
         || Character.class.isAssignableFrom(clazz) || char.class.isAssignableFrom(clazz)
         || Number.class.isAssignableFrom(clazz) || clazz.isPrimitive()) {
-      this.skipString();
+      this.skipString(owner);
     } else {
-      this.skipGuessingType();
+      this.skipGuessingType(owner);
     }
   }
 
-  public abstract void skipMap();
+  public void skipMap() {
+    this.skipMap(null);
+  }
+  
+  public abstract void skipMap(@Nullable Field owner);
 
-  public abstract void skipList();
+  public void skipList() {
+    this.skipList(null);
+  }
+  
+  public abstract void skipList(@Nullable Field owner);
 
-  public abstract void skipString();
+  public void skipString() {
+    this.skipString(null);
+  }
+  
+  public abstract void skipString(@Nullable Field owner);
 
-  public abstract void skipGuessingType();
+  public void skipGuessingType() {
+    this.skipGuessingType(null);
+  }
+  
+  public abstract void skipGuessingType(@Nullable Field owner);
 
-  public abstract boolean skipComments(char marker, boolean reuse);
+  public boolean skipComments(char marker, boolean reuse) {
+    return this.skipComments(null, marker, reuse);
+  }
+  
+  public abstract boolean skipComments(@Nullable Field owner, char marker, boolean reuse);
 
   public char readRawIgnoreEmptyAndNewLines() {
     return this.readRawIgnoreEmptyAndCharacter(AbstractReader.NEW_LINE);

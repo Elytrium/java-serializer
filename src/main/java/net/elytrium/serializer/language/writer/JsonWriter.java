@@ -18,6 +18,8 @@
 package net.elytrium.serializer.language.writer;
 
 import java.io.BufferedWriter;
+import java.lang.reflect.Field;
+import javax.annotation.Nullable;
 import net.elytrium.serializer.SerializerConfig;
 import net.elytrium.serializer.annotations.Comment;
 
@@ -39,7 +41,7 @@ public class JsonWriter extends YamlWriter {
   }
 
   @Override
-  public void writeCommentStart(Comment.At at) {
+  public void writeCommentStart(@Nullable Field owner, Comment.At at) {
     synchronized (this) {
       if (at != Comment.At.SAME_LINE) {
         this.writeIndent();
@@ -50,7 +52,7 @@ public class JsonWriter extends YamlWriter {
   }
 
   @Override
-  public void writeCommentEnd(Comment.At at) {
+  public void writeCommentEnd(@Nullable Field owner, Comment.At at) {
     synchronized (this) {
       if (at != Comment.At.SAME_LINE) {
         this.writeLine();
@@ -59,7 +61,7 @@ public class JsonWriter extends YamlWriter {
   }
 
   @Override
-  public void writeNodeName(String nodeName) {
+  public void writeNodeName(@Nullable Field owner, String nodeName) {
     synchronized (this) {
       this.writeIndent();
       this.writeRaw('"');
@@ -69,7 +71,7 @@ public class JsonWriter extends YamlWriter {
   }
 
   @Override
-  public void writeBeginMap() {
+  public void writeBeginMap(@Nullable Field owner) {
     synchronized (this) {
       this.addIndent();
       this.writeRaw('{');
@@ -78,26 +80,26 @@ public class JsonWriter extends YamlWriter {
   }
 
   @Override
-  public void writeMapPreCommentEntryJoin() {
+  public void writeMapPreCommentEntryJoin(@Nullable Field owner) {
     synchronized (this) {
       this.writeRaw(',');
     }
   }
 
   @Override
-  public void writeMapPostCommentEntryJoin() {
+  public void writeMapPostCommentEntryJoin(@Nullable Field owner) {
 
   }
 
   @Override
-  public void writeMapEntryEnd() {
+  public void writeMapEntryEnd(@Nullable Field owner) {
     synchronized (this) {
       this.writeLine();
     }
   }
 
   @Override
-  public void writeEndMap() {
+  public void writeEndMap(@Nullable Field owner) {
     synchronized (this) {
       this.removeIndent();
       this.writeIndent();
@@ -106,7 +108,7 @@ public class JsonWriter extends YamlWriter {
   }
 
   @Override
-  public void writeBeginList() {
+  public void writeBeginList(@Nullable Field owner) {
     synchronized (this) {
       this.addIndent();
       this.writeRaw('[');
@@ -115,7 +117,7 @@ public class JsonWriter extends YamlWriter {
   }
 
   @Override
-  public void writeListEntry(Object entry) {
+  public void writeListEntry(@Nullable Field owner, Object entry) {
     synchronized (this) {
       this.writeIndent();
       this.writeNode(entry, null);
@@ -123,21 +125,21 @@ public class JsonWriter extends YamlWriter {
   }
 
   @Override
-  public void writeListEntryJoin() {
+  public void writeListEntryJoin(@Nullable Field owner) {
     synchronized (this) {
       this.writeRaw(',');
     }
   }
 
   @Override
-  public void writeListEntryEnd() {
+  public void writeListEntryEnd(@Nullable Field owner) {
     synchronized (this) {
       this.writeLine();
     }
   }
 
   @Override
-  public void writeEndList() {
+  public void writeEndList(@Nullable Field owner) {
     synchronized (this) {
       this.removeIndent();
       this.writeIndent();

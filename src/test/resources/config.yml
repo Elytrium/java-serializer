@@ -1,5 +1,9 @@
 final-field: "🔥 final value"
 regular-field: "regular \"value\""
+regular-field-2: 'regular "value"'
+regular-field-3: |-
+  regular 
+  "value"
 regular-float-field: 3.1415927
 regular-double-field: 2.718281828459045
 enum-field: ENUM_VALUE_1

@@ -38,6 +38,7 @@ import net.elytrium.serializer.annotations.NewLine;
 import net.elytrium.serializer.annotations.OverrideNameStyle;
 import net.elytrium.serializer.annotations.RegisterPlaceholders;
 import net.elytrium.serializer.annotations.Serializer;
+import net.elytrium.serializer.annotations.YamlStringStyle;
 import net.elytrium.serializer.custom.ClassSerializer;
 import net.elytrium.serializer.language.object.YamlSerializable;
 import net.elytrium.serializer.language.writer.YamlWriter;
@@ -91,6 +92,8 @@ class SerializerTest {
 
     Assertions.assertEquals("\uD83D\uDD25 final value", settings.finalField);
     Assertions.assertEquals("regular \"value\"", settings.regularField);
+    Assertions.assertEquals("regular \"value\"", settings.regularField2);
+    Assertions.assertEquals("regular \n\"value\"", settings.regularField3);
     Assertions.assertEquals((float) Math.PI, settings.regularFloatField);
     Assertions.assertEquals(Math.E, settings.regularDoubleField);
     Assertions.assertEquals(RegularEnum.TRUE, settings.enumField);
@@ -268,6 +271,12 @@ class SerializerTest {
     public String finalField = "\uD83D\uDD25 final value";
 
     public String regularField = "regular \"value\"";
+
+    @YamlStringStyle(YamlWriter.StringStyle.SINGLE_QUOTED)
+    public String regularField2 = "regular \"value\"";
+
+    @YamlStringStyle(YamlWriter.StringStyle.MULTILINE_LITERAL_AUTO_KEPT)
+    public String regularField3 = "regular \n\"value\"";
 
     public float regularFloatField = (float) Math.PI;
     public double regularDoubleField = Math.E;

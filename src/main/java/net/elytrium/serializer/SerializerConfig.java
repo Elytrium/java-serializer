@@ -18,6 +18,7 @@
 package net.elytrium.serializer;
 
 import edu.umd.cs.findbugs.annotations.Nullable;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -37,6 +38,8 @@ public class SerializerConfig {
   private final Map<Class<?>, PlaceholderReplacer<?, ?>> registeredReplacers;
   private final Map<Class<?>, ClassSerializer<?, ?>> registeredSerializers;
   private final String lineSeparator;
+  private final String doubledLineSeparator;
+  private final char[] lineSeparatorChars;
   private final NameStyle fieldNameStyle;
   private final NameStyle nodeNameStyle;
   private final boolean safeMode;
@@ -54,6 +57,8 @@ public class SerializerConfig {
     this.registeredReplacers = registeredReplacers;
     this.registeredSerializers = registeredSerializers;
     this.lineSeparator = lineSeparator;
+    this.doubledLineSeparator = lineSeparator + lineSeparator;
+    this.lineSeparatorChars = lineSeparator.toCharArray();
     this.fieldNameStyle = fieldNameStyle;
     this.nodeNameStyle = nodeNameStyle;
     this.safeMode = safeMode;
@@ -188,6 +193,16 @@ public class SerializerConfig {
 
   public String getLineSeparator() {
     return this.lineSeparator;
+  }
+
+
+  public String getDoubledLineSeparator() {
+    return this.doubledLineSeparator;
+  }
+
+  @SuppressFBWarnings("EI_EXPOSE_REP")
+  public char[] getLineSeparatorChars() {
+    return this.lineSeparatorChars;
   }
 
   public boolean isSafeMode() {

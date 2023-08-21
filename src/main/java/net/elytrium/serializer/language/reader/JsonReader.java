@@ -18,6 +18,8 @@
 package net.elytrium.serializer.language.reader;
 
 import java.io.BufferedReader;
+import java.lang.reflect.Field;
+import javax.annotation.Nullable;
 import net.elytrium.serializer.SerializerConfig;
 
 public class JsonReader extends YamlReader {
@@ -31,7 +33,7 @@ public class JsonReader extends YamlReader {
   }
 
   @Override
-  public boolean skipComments(char marker, boolean reuse) {
+  public boolean skipComments(@Nullable Field owner, char marker, boolean reuse) {
     synchronized (this) {
       if (marker == '/') {
         if (this.readRaw() == '/') {

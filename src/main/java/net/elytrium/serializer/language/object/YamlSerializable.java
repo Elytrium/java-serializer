@@ -19,6 +19,9 @@ package net.elytrium.serializer.language.object;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.Map;
 import net.elytrium.serializer.SerializerConfig;
 import net.elytrium.serializer.language.reader.AbstractReader;
 import net.elytrium.serializer.language.reader.YamlReader;
@@ -27,6 +30,7 @@ import net.elytrium.serializer.language.writer.YamlWriter;
 
 public class YamlSerializable extends AbstractSerializable {
 
+  private final Map<Field, YamlWriter.StringStyle> stringStyleMap = new HashMap<>();
   private String singleIndent;
 
   public YamlSerializable() {
@@ -39,12 +43,12 @@ public class YamlSerializable extends AbstractSerializable {
 
   @Override
   protected AbstractReader getReader(BufferedReader reader) {
-    return new YamlReader(reader, this.getConfig());
+    return new YamlReader(reader, this.getConfig(), this);
   }
 
   @Override
   protected AbstractWriter getWriter(BufferedWriter writer) {
-    YamlWriter yamlWriter = new YamlWriter(this.getConfig(), writer);
+    YamlWriter yamlWriter = new YamlWriter(this.getConfig(), writer, this);
     if (this.singleIndent != null) {
       yamlWriter.setSingleIndent(this.singleIndent);
     }
@@ -54,5 +58,13 @@ public class YamlSerializable extends AbstractSerializable {
 
   public void setSingleIndent(String singleIndent) {
     this.singleIndent = singleIndent;
+  }
+
+  public void saveStringStyle(Field field, YamlWriter.StringStyle style) {
+    this.stringStyleMap.put(field, style);
+  }
+
+  public YamlWriter.StringStyle getStringStyle(Field field) {
+    return this.stringStyleMap.get(field);
   }
 }
