@@ -1,3 +1,6 @@
+# The config file to test
+# Elytrium Java Serializer.
+
 final-field: "🔥 final value"
 regular-field: "regular \"value\""
 regular-field-2: 'regular "value"'

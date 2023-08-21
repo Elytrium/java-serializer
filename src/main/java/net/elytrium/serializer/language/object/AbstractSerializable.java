@@ -27,6 +27,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import net.elytrium.serializer.LoadResult;
 import net.elytrium.serializer.SerializerConfig;
+import net.elytrium.serializer.annotations.Comment;
 import net.elytrium.serializer.exceptions.SerializableReadException;
 import net.elytrium.serializer.exceptions.SerializableWriteException;
 import net.elytrium.serializer.language.reader.AbstractReader;
@@ -108,7 +109,12 @@ public abstract class AbstractSerializable {
   }
 
   public void save(BufferedWriter writer) {
-    this.getWriter(writer).writeSerializableObject(this, this.getClass());
+    Comment[] comments = this.getClass().getAnnotationsByType(Comment.class);
+    AbstractWriter abstractWriter = this.getWriter(writer);
+    abstractWriter.writeComments(comments, Comment.At.PREPEND, true);
+    abstractWriter.writeSerializableObject(this, this.getClass());
+    abstractWriter.writeComments(comments, Comment.At.SAME_LINE, true);
+    abstractWriter.writeComments(comments, Comment.At.APPEND, true);
     try {
       writer.flush();
     } catch (IOException e) {

@@ -248,6 +248,11 @@ class SerializerTest {
   */
 
   @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
+  @Comment({
+      @CommentValue("The config file to test"),
+      @CommentValue("Elytrium Java Serializer."),
+      @CommentValue(type = CommentValue.Type.NEW_LINE)
+  })
   public static class Settings extends YamlSerializable {
 
     private static final SerializerConfig CONFIG = new SerializerConfig.Builder().registerSerializer(new ClassSerializer<>(String.class, String.class) {
