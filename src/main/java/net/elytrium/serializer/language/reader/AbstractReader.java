@@ -36,6 +36,7 @@ import net.elytrium.serializer.annotations.Serializer;
 import net.elytrium.serializer.custom.ClassSerializer;
 import net.elytrium.serializer.exceptions.ReflectionException;
 import net.elytrium.serializer.exceptions.SerializableReadException;
+import net.elytrium.serializer.utils.GenericUtils;
 
 public abstract class AbstractReader {
 
@@ -195,9 +196,11 @@ public abstract class AbstractReader {
         return this.readGuessingType(owner);
       } else if (type instanceof ParameterizedType parameterizedType) {
         Class<?> clazz = (Class<?>) parameterizedType.getRawType();
-        Type[] actualTypeArguments = parameterizedType.getActualTypeArguments();
-        return Map.class.isAssignableFrom(clazz) ? this.readMap(owner, actualTypeArguments[0], actualTypeArguments[1])
-            : List.class.isAssignableFrom(clazz) ? this.readList(owner, actualTypeArguments[0])
+        return Map.class.isAssignableFrom(clazz) ? this.readMap(owner,
+            GenericUtils.getParameterType(Map.class, parameterizedType, 0),
+            GenericUtils.getParameterType(Map.class, parameterizedType, 1))
+            : List.class.isAssignableFrom(clazz) ? this.readList(owner,
+            GenericUtils.getParameterType(List.class, parameterizedType, 0))
             : this.readGuessingType(owner);
       } else if (type instanceof Class<?> clazz) {
         if (Map.class.isAssignableFrom(clazz)) {

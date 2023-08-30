@@ -45,6 +45,7 @@ import net.elytrium.serializer.language.writer.YamlWriter;
 import net.elytrium.serializer.placeholders.DefaultPlaceholderReplacer;
 import net.elytrium.serializer.placeholders.PlaceholderReplacer;
 import net.elytrium.serializer.placeholders.Placeholders;
+import net.elytrium.serializer.utils.GenericUtils;
 
 @SuppressWarnings({"SizeReplaceableByIsEmpty", "StringRepeatCanBeUsed"}) // Ignore modern methods, because we support up to Java 8.
 public class YamlReader extends AbstractReader {
@@ -188,15 +189,20 @@ public class YamlReader extends AbstractReader {
 
     if (placeholders != null) {
       PlaceholderReplacer<?, ?> replacer = null;
+      Object value = node.get(holder);
       if (placeholders.replacer() == DefaultPlaceholderReplacer.class) {
-        replacer = this.config.getRegisteredReplacer(node.getType());
+        if (value instanceof Collection<?>) {
+          replacer = this.config.getRegisteredReplacer(
+              (Class<?>) GenericUtils.getParameterType(Collection.class, node.getGenericType(), 0));
+        } else {
+          replacer = this.config.getRegisteredReplacer(node.getType());
+        }
       }
 
       if (replacer == null) {
         replacer = this.config.getAndCacheReplacer(placeholders.replacer());
       }
 
-      Object value = node.get(holder);
       if (this.config.isRegisterPlaceholdersForCollectionEntries() && value instanceof Collection<?> collection) {
         for (Object entry : collection) {
           Placeholders.addPlaceholders(entry, replacer, placeholders.wrapWithBraces(), placeholders.value());
