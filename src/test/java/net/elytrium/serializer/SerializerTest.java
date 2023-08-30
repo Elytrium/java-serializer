@@ -29,13 +29,14 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import net.elytrium.serializer.annotations.CollectionType;
 import net.elytrium.serializer.annotations.Comment;
 import net.elytrium.serializer.annotations.CommentValue;
 import net.elytrium.serializer.annotations.Final;
@@ -311,7 +312,8 @@ class SerializerTest {
 
     public List<String> regularList = Arrays.asList("123", "123", "456");
 
-    public Set<String> regularSet = new HashSet<>(Arrays.asList("123", "123", "456"));
+    @CollectionType(HashSet.class)
+    public Collection<String> regularSet = Arrays.asList("123", "123", "456");
 
     public Deque<String> regularDeque = new ArrayDeque<>(Arrays.asList("123", "123", "456"));
 

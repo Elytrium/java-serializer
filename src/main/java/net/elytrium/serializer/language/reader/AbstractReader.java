@@ -21,11 +21,14 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -34,6 +37,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nullable;
 import net.elytrium.serializer.SerializerConfig;
+import net.elytrium.serializer.annotations.CollectionType;
 import net.elytrium.serializer.annotations.Serializer;
 import net.elytrium.serializer.custom.ClassSerializer;
 import net.elytrium.serializer.exceptions.ReflectionException;
@@ -203,13 +207,37 @@ public abstract class AbstractReader {
               GenericUtils.getParameterType(Map.class, parameterizedType, 0),
               GenericUtils.getParameterType(Map.class, parameterizedType, 1));
         } else if (Collection.class.isAssignableFrom(clazz)) {
-          Type collectionType = GenericUtils.getParameterType(Collection.class, parameterizedType, 0);
+          Type collectionEntryType = GenericUtils.getParameterType(Collection.class, parameterizedType, 0);
+          if (owner != null) {
+            CollectionType collectionType = owner.getAnnotation(CollectionType.class);
+            if (collectionType != null) {
+              try {
+                //noinspection unchecked
+                return this.readCollection(owner,
+                    (Collection<Object>) collectionType.value().getDeclaredConstructor().newInstance(),
+                    collectionEntryType);
+              } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                throw new SerializableReadException(e);
+              }
+            } else {
+              try {
+                //noinspection unchecked
+                return this.readCollection(owner,
+                    (Collection<Object>) owner.getType().getDeclaredConstructor().newInstance(),
+                    collectionEntryType);
+              } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                throw new SerializableReadException(e);
+              } catch (NoSuchMethodException e) {
+                // Ignoring NoSuchMethod.
+              }
+            }
+          }
           if (Set.class.isAssignableFrom(clazz)) {
-            return this.readSet(collectionType);
+            return this.readSet(collectionEntryType);
           } else if (Queue.class.isAssignableFrom(clazz)) {
-            return this.readDeque(collectionType);
+            return this.readDeque(collectionEntryType);
           } else {
-            return this.readList(collectionType);
+            return this.readList(collectionEntryType);
           }
         } else {
           return this.readGuessingType(owner);
@@ -274,6 +302,16 @@ public abstract class AbstractReader {
   
   public abstract Map<Object, Object> readMap(@Nullable Field owner, Type keyType, Type valueType);
 
+  public <C extends Collection<Object>> C readCollection(@Nullable Field owner, C result) {
+    return this.readCollection(owner, result, Object.class);
+  }
+
+  public <C extends Collection<Object>> C readCollection(C result, Type type) {
+    return this.readCollection(null, result, type);
+  }
+
+  public abstract <C extends Collection<Object>> C readCollection(@Nullable Field owner, C result, Type type);
+
   public List<Object> readList(@Nullable Field owner) {
     return this.readList(owner, Object.class);
   }
@@ -282,7 +320,9 @@ public abstract class AbstractReader {
     return this.readList(null, type);
   }
   
-  public abstract List<Object> readList(@Nullable Field owner, Type type);
+  public List<Object> readList(@Nullable Field owner, Type type) {
+    return this.readCollection(owner, new ArrayList<>(), type);
+  }
 
   public Set<Object> readSet(@Nullable Field owner) {
     return this.readSet(owner, Object.class);
@@ -292,7 +332,9 @@ public abstract class AbstractReader {
     return this.readSet(null, type);
   }
 
-  public abstract Set<Object> readSet(@Nullable Field owner, Type type);
+  public Set<Object> readSet(@Nullable Field owner, Type type) {
+    return this.readCollection(owner, new HashSet<>(), type);
+  }
 
   public Deque<Object> readDeque(@Nullable Field owner) {
     return this.readDeque(owner, Object.class);
@@ -302,7 +344,9 @@ public abstract class AbstractReader {
     return this.readDeque(null, type);
   }
 
-  public abstract Deque<Object> readDeque(@Nullable Field owner, Type type);
+  public Deque<Object> readDeque(@Nullable Field owner, Type type) {
+    return this.readCollection(owner, new ArrayDeque<>(), type);
+  }
 
   public String readString() {
     return this.readString(null);
