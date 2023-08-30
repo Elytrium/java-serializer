@@ -370,14 +370,16 @@ public class YamlReader extends AbstractReader {
   @Override
   public Double readDouble(@Nullable Field owner) throws NumberFormatException {
     synchronized (this) {
-      return Double.valueOf(this.readString(owner));
+      String value = this.readString(owner);
+      return value == null ? null : Double.valueOf(value);
     }
   }
 
   @Override
   public Long readLong(@Nullable Field owner) throws NumberFormatException {
     synchronized (this) {
-      return Long.valueOf(this.readString(owner));
+      String value = this.readString(owner);
+      return value == null ? null : Long.valueOf(value);
     }
   }
 
@@ -563,16 +565,20 @@ public class YamlReader extends AbstractReader {
         this.setReuseBuffer();
         this.setSeek();
         String string = this.readString(owner);
-        try {
+        if (string != null) {
           try {
-            yield Long.parseLong(string);
-          } catch (NumberFormatException e) {
-            yield Double.parseDouble(string);
+            try {
+              yield Long.parseLong(string);
+            } catch (NumberFormatException e) {
+              yield Double.parseDouble(string);
+            }
+          } catch (NumberFormatException ignored) {
+            // Exception ignored as the string doesn't contain negative number here, but contains a list.
           }
-        } catch (NumberFormatException e) {
-          this.unsetSeek();
-          yield this.readListByMarker(owner, Object.class, AbstractReader.NEW_LINE);
         }
+
+        this.unsetSeek();
+        yield this.readListByMarker(owner, Object.class, AbstractReader.NEW_LINE);
       }
       case '[' -> this.readListByMarker(owner, Object.class, marker);
       case '{' -> this.readMapByMarker(owner, Object.class, Object.class, marker);
@@ -584,6 +590,10 @@ public class YamlReader extends AbstractReader {
 
         this.setSeekFromMarker(marker);
         String string = this.readStringFromMarker(owner, marker, false);
+        if (string == null) {
+          yield null;
+        }
+
         if (string.endsWith(":") || string.endsWith(": ") || string.contains(": ")) {
           this.unsetSeek();
           this.unsetTempRestoreNewLine();
@@ -636,7 +646,7 @@ public class YamlReader extends AbstractReader {
 
         this.setSeekFromMarker(marker);
         String string = this.readStringFromMarker(owner, marker, false);
-        if (string.endsWith(":") || string.endsWith(": ") || string.contains(": ")) {
+        if (string != null && (string.endsWith(":") || string.endsWith(": ") || string.contains(": "))) {
           this.unsetSeek();
           this.unsetTempRestoreNewLine();
           this.skipMapByMarker(owner, NEW_LINE);
@@ -862,10 +872,6 @@ public class YamlReader extends AbstractReader {
           break;
         }
 
-        if (!nodeName && this.yamlSerializable != null && owner != null) {
-          this.yamlSerializable.saveStringStyle(owner, YamlWriter.StringStyle.NOT_QUOTED);
-        }
-
         if (this.spacesBuffer != null && this.spacesBuffer.length() != 0) {
           this.spacesBuffer.setLength(0);
         }
@@ -896,6 +902,19 @@ public class YamlReader extends AbstractReader {
           }
 
           marker = this.readRaw();
+        }
+
+        if (!nodeName) {
+          String string = result.toString();
+          if (string.equals("null")) {
+            return null;
+          }
+
+          if (this.yamlSerializable != null && owner != null) {
+            this.yamlSerializable.saveStringStyle(owner, YamlWriter.StringStyle.NOT_QUOTED);
+          }
+
+          return string;
         }
       }
     }

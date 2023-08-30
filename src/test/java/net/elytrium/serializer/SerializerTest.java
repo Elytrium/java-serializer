@@ -17,6 +17,7 @@
 
 package net.elytrium.serializer;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
@@ -47,6 +48,7 @@ import net.elytrium.serializer.placeholders.Placeholders;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+@SuppressFBWarnings("UWF_NULL_FIELD")
 class SerializerTest {
 
   @Test
@@ -96,6 +98,7 @@ class SerializerTest {
     Assertions.assertEquals("regular \n\"value\"", settings.regularField3);
     Assertions.assertEquals((float) Math.PI, settings.regularFloatField);
     Assertions.assertEquals(Math.E, settings.regularDoubleField);
+    Assertions.assertNull(settings.nullField);
     Assertions.assertEquals(RegularEnum.TRUE, settings.enumField);
     Assertions.assertEquals("string value", settings.prepend.stringField);
     Assertions.assertEquals("string value", settings.prepend.fieldWithCommentAtSameLine);
@@ -161,6 +164,7 @@ class SerializerTest {
 
     this.compareFiles("config.yml", configWithoutPrefixPath);
 
+    Assertions.assertNull(settings.nullField);
     Assertions.assertEquals(testEnumField, newSettings.enumField);
     Assertions.assertEquals(testDateField, newSettings.dateField);
     Assertions.assertEquals(testPathField, newSettings.pathField);
@@ -285,6 +289,8 @@ class SerializerTest {
 
     public float regularFloatField = (float) Math.PI;
     public double regularDoubleField = Math.E;
+
+    public String nullField = null;
 
     public RegularEnum enumField = RegularEnum.TRUE;
 

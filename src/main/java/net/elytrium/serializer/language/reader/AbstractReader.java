@@ -283,7 +283,8 @@ public abstract class AbstractReader {
 
   @SuppressWarnings("unchecked")
   public <T extends Enum<T>> T readEnum(@Nullable Field owner, Class<?> enumClass) {
-    return Enum.valueOf((Class<T>) enumClass, this.readString(owner));
+    String enumValue = this.readString(owner);
+    return enumValue == null ? null : Enum.valueOf((Class<T>) enumClass, enumValue);
   }
 
   public Boolean readBoolean() {
