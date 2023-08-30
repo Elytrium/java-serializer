@@ -270,7 +270,7 @@ class SerializerTest {
       public String deserialize(String from) {
         return from.trim().isEmpty() ? null : from;
       }
-    }).registerSerializer(new PathSerializer()).setCommentValueIndent(1).build();
+    }).registerSerializer(new PathSerializer()).setCommentValueIndent(1).setLineSeparator("\n").build();
 
     Settings() {
       super(Settings.CONFIG);

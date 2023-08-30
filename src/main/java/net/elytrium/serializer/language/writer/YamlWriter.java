@@ -286,8 +286,8 @@ public class YamlWriter extends AbstractWriter {
     char highSurrogate = 0;
     for (char character : characters) {
       if (!escapeNewLine) {
-        if (character == lineSeparatorChars[lineSeparatorCharsCaught]) {
-          if (++lineSeparatorCharsCaught == lineSeparatorChars.length) {
+        if (character == AbstractWriter.NEW_LINE || character == lineSeparatorChars[lineSeparatorCharsCaught]) {
+          if (character == AbstractWriter.NEW_LINE || ++lineSeparatorCharsCaught == lineSeparatorChars.length) {
             lineSeparatorCharsCaught = 0;
             this.writeLineAndIndent();
 

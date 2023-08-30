@@ -39,6 +39,8 @@ import net.elytrium.serializer.exceptions.SerializableWriteException;
 
 public abstract class AbstractWriter {
 
+  protected static final char NEW_LINE = '\n';
+
   protected final SerializerConfig config;
   protected final BufferedWriter writer;
 
