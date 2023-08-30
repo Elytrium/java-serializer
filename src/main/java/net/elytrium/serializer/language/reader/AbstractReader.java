@@ -124,7 +124,7 @@ public abstract class AbstractReader {
       }
 
       try {
-        Object value = this.readAndDeserializeByType(node, holder, type, serializerStack);
+        Object value = this.readAndDeserializeByType(node, node.get(holder), type, serializerStack);
         if (type == Integer.class || type == int.class) {
           node.setInt(holder, ((Long) value).intValue());
         } else if (type == Short.class || type == short.class) {
