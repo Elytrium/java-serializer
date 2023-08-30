@@ -134,7 +134,15 @@ public class YamlReader extends AbstractReader {
                 if (!Modifier.isStatic(modifiers) && !Modifier.isFinal(modifiers) && !Modifier.isTransient(modifiers)
                     && node.getAnnotation(Final.class) == null && node.getType().getAnnotation(Final.class) == null
                     && node.getAnnotation(Transient.class) == null && node.getType().getAnnotation(Transient.class) == null) {
-                  Placeholders.removePlaceholders(node.get(holder));
+
+                  Object value = node.get(holder);
+                  if (this.config.isRegisterPlaceholdersForCollectionEntries() && value instanceof Collection<?> collection) {
+                    for (Object entry : collection) {
+                      Placeholders.removePlaceholders(entry);
+                    }
+                  }
+
+                  Placeholders.removePlaceholders(value);
                   this.readNode(holder, node);
                   this.updatePlaceholders(holder, node);
                 } else {
@@ -193,9 +201,9 @@ public class YamlReader extends AbstractReader {
         for (Object entry : collection) {
           Placeholders.addPlaceholders(entry, replacer, placeholders.wrapWithBraces(), placeholders.value());
         }
-      } else {
-        Placeholders.addPlaceholders(value, replacer, placeholders.wrapWithBraces(), placeholders.value());
       }
+
+      Placeholders.addPlaceholders(value, replacer, placeholders.wrapWithBraces(), placeholders.value());
     }
   }
 

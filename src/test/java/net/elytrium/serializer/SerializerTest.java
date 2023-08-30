@@ -57,6 +57,13 @@ class SerializerTest {
     Placeholders.addPlaceholders(stringWithPlaceholders, new DefaultPlaceholderReplacer(), "placeholder3", "PLACEHOLDER1", "{PLACEHOLDER2}");
     Assertions.assertEquals("2 3 1", Placeholders.replace(stringWithPlaceholders, "1", "2", "3"));
     Placeholders.removePlaceholders(stringWithPlaceholders);
+
+    List<String> listWithPlaceholders = Arrays.asList("{PLACEHOLDER1} {PLACEHOLDER2}", "{placeholder3}");
+    Placeholders.addPlaceholders(listWithPlaceholders, new DefaultPlaceholderReplacer(), "placeholder3", "PLACEHOLDER1", "{PLACEHOLDER2}");
+    List<String> list = Placeholders.replace(listWithPlaceholders, "1", "2", "3");
+    Assertions.assertEquals("2 3", list.get(0));
+    Assertions.assertEquals("1", list.get(1));
+    Placeholders.removePlaceholders(listWithPlaceholders);
   }
 
   @Test

@@ -20,7 +20,10 @@ package net.elytrium.serializer.placeholders;
 import java.lang.reflect.Array;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -29,13 +32,26 @@ public class Placeholders {
 
   private static final Map<Integer, Placeholderable<?, ?>> PLACEHOLDERS = new HashMap<>();
 
-  public static <T, P> T replace(T value, Object... values) {
-    var placeholderable = (Placeholderable<T, P>) Placeholders.PLACEHOLDERS.get(System.identityHashCode(value));
-    return placeholderable.replacer.replace(value, placeholderable.placeholders, values);
+  public static <T, P, R> R replace(T value, Object... values) {
+    return Placeholders.replaceFor(value, value, values);
+  }
+
+  public static <H, T, P, R> R replaceFor(H holder, T value, Object... values) {
+    var placeholderable = (Placeholderable<T, P>) Placeholders.PLACEHOLDERS.get(System.identityHashCode(holder));
+    if (holder instanceof Collection<?> collection) {
+      List<T> list = new ArrayList<>(collection.size());
+      for (Object entry : collection) {
+        list.add(placeholderable.replacer.replace((T) entry, placeholderable.placeholders, values));
+      }
+
+      return (R) list;
+    } else {
+      return (R) placeholderable.replacer.replace(value, placeholderable.placeholders, values);
+    }
   }
 
   public static void addPlaceholders(Object value, PlaceholderReplacer<?, ?> replacer, String... placeholders) {
-    Placeholders.addPlaceholders(System.identityHashCode(value), replacer, placeholders);
+    Placeholders.addPlaceholders(value, replacer, true, placeholders);
   }
 
   public static void addPlaceholders(Object value, PlaceholderReplacer<?, ?> replacer, boolean wrapWithBraces, String... placeholders) {
