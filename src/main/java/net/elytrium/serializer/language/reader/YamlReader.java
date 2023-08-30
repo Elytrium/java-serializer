@@ -28,9 +28,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.elytrium.serializer.SerializerConfig;
@@ -270,6 +272,20 @@ public class YamlReader extends AbstractReader {
   }
 
   @Override
+  public Set<Object> readSet(@Nullable Field owner, Type type) {
+    synchronized (this) {
+      return this.readListByMarker(new HashSet<>(), owner, type, this.readRawIgnoreEmpty());
+    }
+  }
+
+  @Override
+  public Deque<Object> readDeque(@Nullable Field owner, Type type) {
+    synchronized (this) {
+      return this.readListByMarker(new ArrayDeque<>(), owner, type, this.readRawIgnoreEmpty());
+    }
+  }
+
+  @Override
   public Character readCharacter(@Nullable Field owner) {
     synchronized (this) {
       return this.readCharacterFromMarker(owner, this.readRawIgnoreEmpty());
@@ -397,13 +413,16 @@ public class YamlReader extends AbstractReader {
     }
   }
 
-  @SuppressFBWarnings("SA_FIELD_SELF_COMPARISON")
   private List<Object> readListByMarker(@Nullable Field owner, Type type, char marker) {
+    return this.readListByMarker(new ArrayList<>(), owner, type, marker);
+  }
+
+  @SuppressFBWarnings("SA_FIELD_SELF_COMPARISON")
+  private <C extends Collection<Object>> C readListByMarker(C result, @Nullable Field owner, Type type, char marker) {
     if (this.skipComments(owner, marker, false)) {
       marker = AbstractReader.NEW_LINE;
     }
 
-    List<Object> result = new ArrayList<>();
     switch (marker) {
       case '[': {
         char nextMarker = this.readRawIgnoreEmptyAndNewLines();

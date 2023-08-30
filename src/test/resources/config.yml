@@ -11,6 +11,17 @@ regular-float-field: 3.1415927
 regular-double-field: 2.718281828459045
 null-field: null
 enum-field: ENUM_VALUE_1
+regular-list:
+  - "123"
+  - "123"
+  - "456"
+regular-set:
+  - "123"
+  - "456"
+regular-deque:
+  - "123"
+  - "123"
+  - "456"
 string-with-placeholders: "This is {TEST} with {TEST2}"
 string-with-placeholders-2: "This is {test} with {test2}"
 another-string-with-placeholders: "PLACEHOLDER another-placeholder"

@@ -24,10 +24,12 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayDeque;
+import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nullable;
@@ -196,12 +198,22 @@ public abstract class AbstractReader {
         return this.readGuessingType(owner);
       } else if (type instanceof ParameterizedType parameterizedType) {
         Class<?> clazz = (Class<?>) parameterizedType.getRawType();
-        return Map.class.isAssignableFrom(clazz) ? this.readMap(owner,
-            GenericUtils.getParameterType(Map.class, parameterizedType, 0),
-            GenericUtils.getParameterType(Map.class, parameterizedType, 1))
-            : List.class.isAssignableFrom(clazz) ? this.readList(owner,
-            GenericUtils.getParameterType(List.class, parameterizedType, 0))
-            : this.readGuessingType(owner);
+        if (Map.class.isAssignableFrom(clazz)) {
+          return this.readMap(owner,
+              GenericUtils.getParameterType(Map.class, parameterizedType, 0),
+              GenericUtils.getParameterType(Map.class, parameterizedType, 1));
+        } else if (Collection.class.isAssignableFrom(clazz)) {
+          Type collectionType = GenericUtils.getParameterType(Collection.class, parameterizedType, 0);
+          if (Set.class.isAssignableFrom(clazz)) {
+            return this.readSet(collectionType);
+          } else if (Queue.class.isAssignableFrom(clazz)) {
+            return this.readDeque(collectionType);
+          } else {
+            return this.readList(collectionType);
+          }
+        } else {
+          return this.readGuessingType(owner);
+        }
       } else if (type instanceof Class<?> clazz) {
         if (Map.class.isAssignableFrom(clazz)) {
           return this.readMap(owner);
@@ -271,6 +283,26 @@ public abstract class AbstractReader {
   }
   
   public abstract List<Object> readList(@Nullable Field owner, Type type);
+
+  public Set<Object> readSet(@Nullable Field owner) {
+    return this.readSet(owner, Object.class);
+  }
+
+  public Set<Object> readSet(Type type) {
+    return this.readSet(null, type);
+  }
+
+  public abstract Set<Object> readSet(@Nullable Field owner, Type type);
+
+  public Deque<Object> readDeque(@Nullable Field owner) {
+    return this.readDeque(owner, Object.class);
+  }
+
+  public Deque<Object> readDeque(Type type) {
+    return this.readDeque(null, type);
+  }
+
+  public abstract Deque<Object> readDeque(@Nullable Field owner, Type type);
 
   public String readString() {
     return this.readString(null);

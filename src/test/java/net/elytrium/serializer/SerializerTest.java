@@ -27,11 +27,15 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.Deque;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import net.elytrium.serializer.annotations.Comment;
 import net.elytrium.serializer.annotations.CommentValue;
 import net.elytrium.serializer.annotations.Final;
@@ -107,6 +111,9 @@ class SerializerTest {
     Assertions.assertEquals(Math.E, settings.regularDoubleField);
     Assertions.assertNull(settings.nullField);
     Assertions.assertEquals(RegularEnum.TRUE, settings.enumField);
+    Assertions.assertEquals(3, settings.regularList.size());
+    Assertions.assertEquals(2, settings.regularSet.size());
+    Assertions.assertEquals(3, settings.regularDeque.size());
     Assertions.assertEquals("string value", settings.prepend.stringField);
     Assertions.assertEquals("string value", settings.prepend.fieldWithCommentAtSameLine);
     Assertions.assertEquals("string value", settings.prepend.stringField);
@@ -301,6 +308,12 @@ class SerializerTest {
     public String nullField = null;
 
     public RegularEnum enumField = RegularEnum.TRUE;
+
+    public List<String> regularList = Arrays.asList("123", "123", "456");
+
+    public Set<String> regularSet = new HashSet<>(Arrays.asList("123", "123", "456"));
+
+    public Deque<String> regularDeque = new ArrayDeque<>(Arrays.asList("123", "123", "456"));
 
     @RegisterPlaceholders({"{TEST}", "TEST2"})
     public String stringWithPlaceholders = "This is {TEST} with {TEST2}";

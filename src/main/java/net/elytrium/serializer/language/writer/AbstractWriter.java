@@ -21,7 +21,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.List;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -286,8 +286,8 @@ public abstract class AbstractWriter {
         value = this.serializeValue(value);
         if (value instanceof Map) {
           this.writeMap(owner, (Map<Object, Object>) value, comments);
-        } else if (value instanceof List) {
-          this.writeList(owner, (List<Object>) value, comments);
+        } else if (value instanceof Collection<?>) {
+          this.writeList(owner, (Collection<Object>) value, comments);
         } else if (value instanceof String) {
           this.writeString(owner, (String) value);
         } else if (value instanceof Character) {
@@ -364,11 +364,11 @@ public abstract class AbstractWriter {
   
   public abstract void writeEndMap(@Nullable Field owner);
 
-  public void writeList(List<Object> value, Comment[] comments) {
+  public void writeList(Collection<Object> value, Comment[] comments) {
     this.writeList(null, value, comments);
   }
 
-  public void writeList(@Nullable Field owner, List<Object> value, Comment[] comments) {
+  public void writeList(@Nullable Field owner, Collection<Object> value, Comment[] comments) {
     synchronized (this) {
       if (value.isEmpty()) {
         this.writeEmptyList(owner);
