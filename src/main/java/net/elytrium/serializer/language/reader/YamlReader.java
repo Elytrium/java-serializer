@@ -385,6 +385,10 @@ public class YamlReader extends AbstractReader {
 
   @SuppressFBWarnings("SA_FIELD_SELF_COMPARISON")
   private List<Object> readListByMarker(@Nullable Field owner, Type type, char marker) {
+    if (this.skipComments(owner, marker, false)) {
+      marker = AbstractReader.NEW_LINE;
+    }
+
     List<Object> result = new ArrayList<>();
     switch (marker) {
       case '[': {
@@ -412,6 +416,9 @@ public class YamlReader extends AbstractReader {
           result.add(this.readByType0(null, type));
           this.unsetTempRestoreNewLine();
           nextMarker = this.readRawIgnoreEmptyAndNewLines();
+          if (this.skipComments(owner, nextMarker, false)) {
+            nextMarker = this.readRawIgnoreEmptyAndNewLines();
+          }
         }
 
         this.setReuseBuffer();
@@ -432,6 +439,10 @@ public class YamlReader extends AbstractReader {
   @SuppressFBWarnings("SA_FIELD_SELF_COMPARISON")
   private Map<Object, Object> readMapByMarker(@Nullable Field owner, Type keyType, Type valueType, char marker) {
     Map<Object, Object> result = new LinkedHashMap<>();
+    if (this.skipComments(owner, marker, false)) {
+      marker = AbstractReader.NEW_LINE;
+    }
+
     char nextMarker;
     if (this.tempRestoreNewLine) {
       nextMarker = marker;
@@ -458,6 +469,9 @@ public class YamlReader extends AbstractReader {
         while (nextMarker != '\0' && correctIndent == this.currentIndent) {
           this.readMapEntry(owner, keyType, valueType, this.readNodeNameByMarker(null, nextMarker), result);
           nextMarker = this.readRawIgnoreEmptyAndNewLines();
+          if (this.skipComments(owner, nextMarker, false)) {
+            nextMarker = this.readRawIgnoreEmptyAndNewLines();
+          }
         }
 
         this.setReuseBuffer();
@@ -666,6 +680,10 @@ public class YamlReader extends AbstractReader {
 
   @SuppressFBWarnings("SA_FIELD_SELF_COMPARISON")
   private void skipListByMarker(@Nullable Field owner, char marker) {
+    if (this.skipComments(owner, marker, false)) {
+      marker = AbstractReader.NEW_LINE;
+    }
+
     switch (marker) {
       case '[': {
         char nextMarker = this.readRawIgnoreEmptyAndNewLines();
@@ -692,6 +710,9 @@ public class YamlReader extends AbstractReader {
           this.skipGuessingType(owner);
           this.unsetTempRestoreNewLine();
           nextMarker = this.readRawIgnoreEmptyAndNewLines();
+          if (this.skipComments(owner, nextMarker, false)) {
+            nextMarker = this.readRawIgnoreEmptyAndNewLines();
+          }
         }
 
         this.setReuseBuffer();
@@ -720,6 +741,10 @@ public class YamlReader extends AbstractReader {
 
   @SuppressFBWarnings("SA_FIELD_SELF_COMPARISON")
   private void skipMapByMarker(@Nullable Field owner, char marker) {
+    if (this.skipComments(owner, marker, false)) {
+      marker = AbstractReader.NEW_LINE;
+    }
+
     char nextMarker = this.readRawIgnoreEmptyAndNewLines();
     switch (marker) {
       case '{' -> {
@@ -735,6 +760,9 @@ public class YamlReader extends AbstractReader {
           this.skipStringFromMarker(owner, nextMarker, true);
           this.skipGuessingType(owner);
           nextMarker = this.readRawIgnoreEmptyAndNewLines();
+          if (this.skipComments(owner, nextMarker, false)) {
+            nextMarker = this.readRawIgnoreEmptyAndNewLines();
+          }
         }
 
         this.setReuseBuffer();
