@@ -56,6 +56,12 @@ public abstract class AbstractWriter {
     this.writer = writer;
   }
 
+  private boolean isFieldVisible(Field field) {
+    int modifiers = field.getModifiers();
+    return !Modifier.isStatic(modifiers) && !Modifier.isTransient(modifiers)
+        && field.getAnnotation(Transient.class) == null && field.getType().getAnnotation(Transient.class) == null;
+  }
+
   public void writeSerializableObject(Object value, Class<?> clazz) {
     this.writeSerializableObject(null, value, clazz);
   }
@@ -71,11 +77,17 @@ public abstract class AbstractWriter {
       Field[] fields = clazz.getDeclaredFields();
       boolean empty = true;
       int counter = 0;
+      int lastVisibleFieldIndex = 0;
+      for (int i = fields.length - 1; i >= 0; --i) {
+        if (this.isFieldVisible(fields[i])) {
+          lastVisibleFieldIndex = i + 1;
+          break;
+        }
+      }
+
       for (Field field : fields) {
         ++counter;
-        int modifiers = field.getModifiers();
-        if (!Modifier.isStatic(modifiers) && !Modifier.isTransient(modifiers)
-            && field.getAnnotation(Transient.class) == null && field.getType().getAnnotation(Transient.class) == null) {
+        if (this.isFieldVisible(field)) {
           try {
             field.setAccessible(true);
           } catch (Exception e) {
@@ -125,7 +137,7 @@ public abstract class AbstractWriter {
                     ? this.config.toNodeName(field.getName())
                     : this.config.toNodeName(field.getName(), overrideNameStyle.field(), overrideNameStyle.node()),
                 nodeValue,
-                counter != fields.length,
+                counter != lastVisibleFieldIndex,
                 Stream.of(field.getType().getAnnotationsByType(Comment.class), field.getAnnotationsByType(Comment.class))
                     .flatMap(Stream::of)
                     .toArray(Comment[]::new)

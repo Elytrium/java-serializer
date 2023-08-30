@@ -106,6 +106,7 @@ class SerializerTest {
     Assertions.assertEquals("string value", settings.prepend.fieldWithCommentAtSameLine);
     Assertions.assertEquals("string value", settings.prepend.sameLine.append.field1);
     Assertions.assertEquals("string value", settings.prepend.sameLine.append.field2);
+    Assertions.assertEquals("some ignored field", settings.prepend.transientField);
     Assertions.assertEquals(
         "This is string with placeholders",
         Placeholders.replace(settings.stringWithPlaceholders, "string", "placeholders")
@@ -405,6 +406,8 @@ class SerializerTest {
           );
         }
       }
+
+      private transient String transientField = "some ignored field";
     }
 
     public NodeTest nodeTest = new NodeTest();
