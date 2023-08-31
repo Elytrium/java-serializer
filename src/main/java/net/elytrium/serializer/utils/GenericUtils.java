@@ -34,7 +34,7 @@ public class GenericUtils {
   }
 
   public static Type getParameterTypeFromSuperclass(Class<?> parent, Type type, Type superclass, int searchIndex) {
-    Type superclassType = GenericUtils.getParameterType(parent, superclass, searchIndex);
+    Type superclassType = GenericUtils.getParameterType0(parent, superclass, searchIndex);
     if (superclassType instanceof TypeVariable<?> typeVariable && type instanceof ParameterizedType parameterizedType) {
       Class<?> rawSuperclass = (Class<?>) parameterizedType.getRawType();
       int index = GenericUtils.getParameterIndex(rawSuperclass.getTypeParameters(), typeVariable);
@@ -46,7 +46,7 @@ public class GenericUtils {
     return superclassType;
   }
 
-  public static Type getParameterType(Class<?> parent, Type type, int index) {
+  private static Type getParameterType0(Class<?> parent, Type type, int index) {
     if (type == null) {
       return null;
     }
@@ -80,5 +80,10 @@ public class GenericUtils {
     }
 
     return null;
+  }
+
+  public static Type getParameterType(Class<?> parent, Type type, int index) {
+    Type parameterType = GenericUtils.getParameterType0(parent, type, index);
+    return parameterType == null ? Object.class : parameterType;
   }
 }

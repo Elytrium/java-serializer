@@ -214,9 +214,9 @@ public abstract class AbstractReader {
         }
       } else if (type instanceof Class<?> clazz) {
         if (Map.class.isAssignableFrom(clazz)) {
-          return this.readMap(owner);
-        } else if (List.class.isAssignableFrom(clazz)) {
-          return this.readList(owner);
+          return this.readMapByType(owner, type);
+        } else if (Collection.class.isAssignableFrom(clazz)) {
+          return this.readCollectionByType(owner, type, clazz);
         } else if (String.class.isAssignableFrom(clazz)) {
           return this.readString(owner);
         } else if (Character.class.isAssignableFrom(clazz) || char.class.isAssignableFrom(clazz)) {
@@ -257,8 +257,8 @@ public abstract class AbstractReader {
   }
 
   @SuppressFBWarnings("NP_LOAD_OF_KNOWN_NULL_VALUE")
-  private Collection<Object> readCollectionByType(Field owner, ParameterizedType parameterizedType, Class<?> clazz) {
-    Type collectionEntryType = GenericUtils.getParameterType(Collection.class, parameterizedType, 0);
+  private Collection<Object> readCollectionByType(Field owner, Type type, Class<?> clazz) {
+    Type collectionEntryType = GenericUtils.getParameterType(Collection.class, type, 0);
     if (owner != null) {
       CollectionType collectionType = owner.getAnnotation(CollectionType.class);
       if (collectionType != null) {
@@ -270,7 +270,7 @@ public abstract class AbstractReader {
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
           throw new SerializableReadException(e);
         }
-      } else {
+      } else if (Collection.class.isAssignableFrom(owner.getType())) {
         try {
           //noinspection unchecked
           return this.readCollection(owner,
@@ -293,9 +293,9 @@ public abstract class AbstractReader {
   }
 
   @SuppressFBWarnings("NP_LOAD_OF_KNOWN_NULL_VALUE")
-  private Map<Object, Object> readMapByType(Field owner, ParameterizedType parameterizedType) {
-    Type mapKeyType = GenericUtils.getParameterType(Map.class, parameterizedType, 0);
-    Type mapValueType = GenericUtils.getParameterType(Map.class, parameterizedType, 1);
+  private Map<Object, Object> readMapByType(Field owner, Type type) {
+    Type mapKeyType = GenericUtils.getParameterType(Map.class, type, 0);
+    Type mapValueType = GenericUtils.getParameterType(Map.class, type, 1);
     if (owner != null) {
       MapType mapType = owner.getAnnotation(MapType.class);
       if (mapType != null) {
@@ -306,7 +306,7 @@ public abstract class AbstractReader {
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
           throw new SerializableReadException(e);
         }
-      } else {
+      } else if (Map.class.isAssignableFrom(owner.getType())) {
         try {
           //noinspection unchecked
           return this.readMap(owner,
