@@ -250,7 +250,7 @@ public class YamlReader extends AbstractReader {
   }
 
   @Override
-  public Map<Object, Object> readMap(@Nullable Field owner, Type keyType, Type valueType) {
+  public <C extends Map<Object, Object>> C readMap(@Nullable Field owner, C result, Type keyType, Type valueType) {
     boolean startOfFile = this.startOfFile;
     synchronized (this) {
       char marker = this.readRawIgnoreEmpty();
@@ -258,7 +258,7 @@ public class YamlReader extends AbstractReader {
         this.setTempRestoreNewLine();
       }
 
-      return this.readMapByMarker(owner, keyType, valueType, marker);
+      return this.readMapByMarker(owner, result, keyType, valueType, marker);
     }
   }
 
@@ -453,9 +453,12 @@ public class YamlReader extends AbstractReader {
     return result;
   }
 
+  private Map<Object, Object> readMapByMarker(@Nullable Field owner, char marker) {
+    return this.readMapByMarker(owner, new LinkedHashMap<>(), Object.class, Object.class, marker);
+  }
+
   @SuppressFBWarnings("SA_FIELD_SELF_COMPARISON")
-  private Map<Object, Object> readMapByMarker(@Nullable Field owner, Type keyType, Type valueType, char marker) {
-    Map<Object, Object> result = new LinkedHashMap<>();
+  private <C extends Map<Object, Object>> C readMapByMarker(@Nullable Field owner, C result, Type keyType, Type valueType, char marker) {
     if (this.skipComments(owner, marker, false)) {
       marker = AbstractReader.NEW_LINE;
     }
@@ -590,7 +593,7 @@ public class YamlReader extends AbstractReader {
       case AbstractReader.NEW_LINE -> {
         char nextMarker = this.readRawIgnoreEmpty();
         this.setReuseBuffer();
-        yield nextMarker == '-' ? this.readListByMarker(owner, marker) : this.readMapByMarker(owner, Object.class, Object.class, marker);
+        yield nextMarker == '-' ? this.readListByMarker(owner, marker) : this.readMapByMarker(owner, marker);
       }
       case '-' -> {
         this.setReuseBuffer();
@@ -612,7 +615,7 @@ public class YamlReader extends AbstractReader {
         yield this.readListByMarker(owner, AbstractReader.NEW_LINE);
       }
       case '[' -> this.readListByMarker(owner, marker);
-      case '{' -> this.readMapByMarker(owner, Object.class, Object.class, marker);
+      case '{' -> this.readMapByMarker(owner, marker);
       case '"', '\'', '>', '|' -> this.readStringFromMarker(owner, marker, false);
       default -> {
         if (this.isNullSkippedByMarker(marker)) {
@@ -628,7 +631,7 @@ public class YamlReader extends AbstractReader {
         if (string.endsWith(":") || string.endsWith(": ") || string.contains(": ")) {
           this.unsetSeek();
           this.unsetTempRestoreNewLine();
-          yield this.readMapByMarker(owner, Object.class, Object.class, AbstractReader.NEW_LINE);
+          yield this.readMapByMarker(owner, AbstractReader.NEW_LINE);
         } else {
           this.clearSeek();
           try {

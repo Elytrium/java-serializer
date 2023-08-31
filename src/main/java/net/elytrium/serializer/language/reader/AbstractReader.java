@@ -17,6 +17,7 @@
 
 package net.elytrium.serializer.language.reader;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -29,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -38,6 +40,7 @@ import java.util.logging.Logger;
 import javax.annotation.Nullable;
 import net.elytrium.serializer.SerializerConfig;
 import net.elytrium.serializer.annotations.CollectionType;
+import net.elytrium.serializer.annotations.MapType;
 import net.elytrium.serializer.annotations.Serializer;
 import net.elytrium.serializer.custom.ClassSerializer;
 import net.elytrium.serializer.exceptions.ReflectionException;
@@ -203,42 +206,9 @@ public abstract class AbstractReader {
       } else if (type instanceof ParameterizedType parameterizedType) {
         Class<?> clazz = (Class<?>) parameterizedType.getRawType();
         if (Map.class.isAssignableFrom(clazz)) {
-          return this.readMap(owner,
-              GenericUtils.getParameterType(Map.class, parameterizedType, 0),
-              GenericUtils.getParameterType(Map.class, parameterizedType, 1));
+          return this.readMapByType(owner, parameterizedType);
         } else if (Collection.class.isAssignableFrom(clazz)) {
-          Type collectionEntryType = GenericUtils.getParameterType(Collection.class, parameterizedType, 0);
-          if (owner != null) {
-            CollectionType collectionType = owner.getAnnotation(CollectionType.class);
-            if (collectionType != null) {
-              try {
-                //noinspection unchecked
-                return this.readCollection(owner,
-                    (Collection<Object>) collectionType.value().getDeclaredConstructor().newInstance(),
-                    collectionEntryType);
-              } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-                throw new SerializableReadException(e);
-              }
-            } else {
-              try {
-                //noinspection unchecked
-                return this.readCollection(owner,
-                    (Collection<Object>) owner.getType().getDeclaredConstructor().newInstance(),
-                    collectionEntryType);
-              } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-                throw new SerializableReadException(e);
-              } catch (NoSuchMethodException e) {
-                // Ignoring NoSuchMethod.
-              }
-            }
-          }
-          if (Set.class.isAssignableFrom(clazz)) {
-            return this.readSet(collectionEntryType);
-          } else if (Queue.class.isAssignableFrom(clazz)) {
-            return this.readDeque(collectionEntryType);
-          } else {
-            return this.readList(collectionEntryType);
-          }
+          return this.readCollectionByType(owner, parameterizedType, clazz);
         } else {
           return this.readGuessingType(owner);
         }
@@ -286,6 +256,72 @@ public abstract class AbstractReader {
     }
   }
 
+  @SuppressFBWarnings("NP_LOAD_OF_KNOWN_NULL_VALUE")
+  private Collection<Object> readCollectionByType(Field owner, ParameterizedType parameterizedType, Class<?> clazz) {
+    Type collectionEntryType = GenericUtils.getParameterType(Collection.class, parameterizedType, 0);
+    if (owner != null) {
+      CollectionType collectionType = owner.getAnnotation(CollectionType.class);
+      if (collectionType != null) {
+        try {
+          //noinspection unchecked
+          return this.readCollection(owner,
+              (Collection<Object>) collectionType.value().getDeclaredConstructor().newInstance(),
+              collectionEntryType);
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+          throw new SerializableReadException(e);
+        }
+      } else {
+        try {
+          //noinspection unchecked
+          return this.readCollection(owner,
+              (Collection<Object>) owner.getType().getDeclaredConstructor().newInstance(), collectionEntryType);
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+          throw new SerializableReadException(e);
+        } catch (NoSuchMethodException e) {
+          // Ignoring NoSuchMethod.
+        }
+      }
+    }
+
+    if (Set.class.isAssignableFrom(clazz)) {
+      return this.readSet(owner, collectionEntryType);
+    } else if (Queue.class.isAssignableFrom(clazz)) {
+      return this.readDeque(owner, collectionEntryType);
+    } else {
+      return this.readList(owner, collectionEntryType);
+    }
+  }
+
+  @SuppressFBWarnings("NP_LOAD_OF_KNOWN_NULL_VALUE")
+  private Map<Object, Object> readMapByType(Field owner, ParameterizedType parameterizedType) {
+    Type mapKeyType = GenericUtils.getParameterType(Map.class, parameterizedType, 0);
+    Type mapValueType = GenericUtils.getParameterType(Map.class, parameterizedType, 1);
+    if (owner != null) {
+      MapType mapType = owner.getAnnotation(MapType.class);
+      if (mapType != null) {
+        try {
+          //noinspection unchecked
+          return this.readMap(owner,
+              (Map<Object, Object>) mapType.value().getDeclaredConstructor().newInstance(), mapKeyType, mapValueType);
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+          throw new SerializableReadException(e);
+        }
+      } else {
+        try {
+          //noinspection unchecked
+          return this.readMap(owner,
+              (Map<Object, Object>) owner.getType().getDeclaredConstructor().newInstance(), mapKeyType, mapValueType);
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+          throw new SerializableReadException(e);
+        } catch (NoSuchMethodException e) {
+          // Ignoring NoSuchMethod.
+        }
+      }
+    }
+
+    return this.readMap(owner, mapKeyType, mapValueType);
+  }
+
   public Object readGuessingType() {
     return this.readGuessingType(null);
   }
@@ -297,10 +333,22 @@ public abstract class AbstractReader {
   }
 
   public Map<Object, Object> readMap(Type keyType, Type valueType) {
-    return this.readMap(null, keyType, valueType);
+    return this.readMap((Field) null, keyType, valueType);
   }
-  
-  public abstract Map<Object, Object> readMap(@Nullable Field owner, Type keyType, Type valueType);
+
+  public Map<Object, Object> readMap(@Nullable Field owner, Type keyType, Type valueType) {
+    return this.readMap(owner, new LinkedHashMap<>(), keyType, valueType);
+  }
+
+  public <C extends Map<Object, Object>> C readMap(@Nullable Field owner, C result) {
+    return this.readMap(owner, result, Object.class, Object.class);
+  }
+
+  public <C extends Map<Object, Object>> C readMap(C result, Type keyType, Type valueType) {
+    return this.readMap(null, result, keyType, valueType);
+  }
+
+  public abstract <C extends Map<Object, Object>> C readMap(@Nullable Field owner, C result, Type keyType, Type valueType);
 
   public <C extends Collection<Object>> C readCollection(@Nullable Field owner, C result) {
     return this.readCollection(owner, result, Object.class);

@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,6 +41,7 @@ import net.elytrium.serializer.annotations.CollectionType;
 import net.elytrium.serializer.annotations.Comment;
 import net.elytrium.serializer.annotations.CommentValue;
 import net.elytrium.serializer.annotations.Final;
+import net.elytrium.serializer.annotations.MapType;
 import net.elytrium.serializer.annotations.NewLine;
 import net.elytrium.serializer.annotations.OverrideNameStyle;
 import net.elytrium.serializer.annotations.RegisterPlaceholders;
@@ -137,6 +139,7 @@ class SerializerTest {
     Assertions.assertEquals(3, settings.listOfString2ObjectMap.size());
     Assertions.assertEquals(3, settings.chaosMapList.size());
     Assertions.assertEquals(2, settings.chaosMap.size());
+    Assertions.assertEquals(HashMap.class, settings.int2StringMap.getClass());
 
     settings.int2StringMap.forEach((key, value) -> {
       Assertions.assertEquals(Integer.class, key.getClass());
@@ -326,6 +329,7 @@ class SerializerTest {
     @RegisterPlaceholders(value = {"PLACEHOLDER", "another-placeholder"}, wrapWithBraces = false)
     public String anotherStringWithPlaceholders = "PLACEHOLDER another-placeholder";
 
+    @MapType(HashMap.class)
     public Map<Integer, String> int2StringMap = SerializerTest.map(1, "v1", 15555, "v2", 44, "v3");
 
     public final List<Object> objectListWithMaps = Arrays.asList(
