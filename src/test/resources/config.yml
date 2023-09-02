@@ -3,7 +3,7 @@
 
 final-field: "🔥 final value"
 regular-field: "regular \"value\""
-regular-field-2: 'regular "value"'
+regular-field-2: 'regular ''''value1'''' "value2"'
 regular-field-3: |-
   regular 
   "value"
@@ -40,6 +40,17 @@ int-2-string-map-fast-util-2:
   1: "v1"
   15555: "v2"
   44: "v3"
+int-2-long-list-map-fast-util:
+  1:
+    - 1
+    - 2
+    - -3
+    - 4
+  -15555:
+    - 3
+    - 2
+    - -3
+    - 4
 object-list-with-maps:
   - test:
       test2: "test"

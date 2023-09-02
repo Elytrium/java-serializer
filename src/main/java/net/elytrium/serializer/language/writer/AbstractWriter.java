@@ -293,7 +293,7 @@ public abstract class AbstractWriter {
         if (value instanceof Map) {
           this.writeMap(owner, (Map<Object, Object>) value, comments);
         } else if (value instanceof Collection<?>) {
-          this.writeList(owner, (Collection<Object>) value, comments);
+          this.writeCollection(owner, (Collection<Object>) value, comments);
         } else if (value instanceof String) {
           this.writeString(owner, (String) value);
         } else if (value instanceof Character) {
@@ -370,72 +370,70 @@ public abstract class AbstractWriter {
 
   public abstract void writeEndMap(@Nullable Field owner);
 
-  public void writeList(Collection<Object> value, Comment[] comments) {
-    this.writeList(null, value, comments);
+  public void writeCollection(Collection<Object> value, Comment[] comments) {
+    this.writeCollection(null, value, comments);
   }
 
-  public void writeList(@Nullable Field owner, Collection<Object> value, Comment[] comments) {
+  public void writeCollection(@Nullable Field owner, Collection<Object> value, Comment[] comments) {
     synchronized (this) {
       if (value.isEmpty()) {
-        this.writeEmptyList(owner);
+        this.writeEmptyCollection(owner);
         this.writeComments(owner, comments, Comment.At.SAME_LINE, true);
       } else {
-        this.writeBeginList(owner);
+        this.writeBeginCollection(owner);
         this.writeComments(owner, comments, Comment.At.SAME_LINE, true);
 
         int counter = 0;
         int entriesAmount = value.size();
         for (Object entry : value) {
-          this.writeListEntry(owner, entry);
+          this.writeCollectionEntry(owner, entry);
           if (++counter != entriesAmount) {
-            this.writeListEntryJoin(owner);
+            this.writeCollectionEntryJoin(owner);
           }
 
-          this.writeListEntryEnd(owner);
+          this.writeCollectionEntryEnd(owner);
         }
 
-        this.writeEndList(owner);
+        this.writeEndCollection(owner);
       }
     }
   }
 
-  public void writeEmptyList() {
-    this.writeEmptyList(null);
+  public void writeEmptyCollection() {
+    this.writeEmptyCollection(null);
   }
 
-  public abstract void writeEmptyList(@Nullable Field owner);
+  public abstract void writeEmptyCollection(@Nullable Field owner);
 
-  public void writeBeginList() {
-    this.writeBeginList(null);
+  public void writeBeginCollection() {
+    this.writeBeginCollection(null);
   }
 
-  public abstract void writeBeginList(@Nullable Field owner);
+  public abstract void writeBeginCollection(@Nullable Field owner);
 
-  public void writeListEntry(Object entry) {
-    this.writeListEntry(null, entry);
+  public void writeCollectionEntry(Object entry) {
+    this.writeCollectionEntry(null, entry);
   }
 
-  public abstract void writeListEntry(@Nullable Field owner, Object entry);
+  public abstract void writeCollectionEntry(@Nullable Field owner, Object entry);
 
-  public void writeListEntryJoin() {
-    this.writeListEntryJoin(null);
+  public void writeCollectionEntryJoin() {
+    this.writeCollectionEntryJoin(null);
   }
 
-  public abstract void writeListEntryJoin(@Nullable Field owner);
+  public abstract void writeCollectionEntryJoin(@Nullable Field owner);
 
-  public void writeListEntryEnd() {
-    this.writeListEntryEnd(null);
+  public void writeCollectionEntryEnd() {
+    this.writeCollectionEntryEnd(null);
   }
 
-  public abstract void writeListEntryEnd(@Nullable Field owner);
+  public abstract void writeCollectionEntryEnd(@Nullable Field owner);
 
-  public void writeEndList() {
-    this.writeEndList(null);
+  public void writeEndCollection() {
+    this.writeEndCollection(null);
   }
 
-  public abstract void writeEndList(@Nullable Field owner);
-
-  public abstract void writeLine();
+  public abstract void writeEndCollection(@Nullable Field owner);
 
   public void writeString(String value) {
     this.writeString(null, value);
@@ -478,6 +476,8 @@ public abstract class AbstractWriter {
       this.writeRaw(value.toString());
     }
   }
+
+  public abstract void writeLine();
 
   public void writeRaw(String value) {
     try {

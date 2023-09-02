@@ -254,6 +254,37 @@ public abstract class AbstractReader {
 
   @SuppressWarnings("unchecked")
   @SuppressFBWarnings("NP_LOAD_OF_KNOWN_NULL_VALUE")
+  private Map<Object, Object> readMapByType(Field owner, Type type) {
+    Type mapKeyType = GenericUtils.getParameterType(Map.class, type, 0);
+    Type mapValueType = GenericUtils.getParameterType(Map.class, type, 1);
+    if (owner != null) {
+      MapType mapType = owner.getAnnotation(MapType.class);
+      if (mapType != null) {
+        try {
+          var constructor = mapType.value().getDeclaredConstructor();
+          constructor.setAccessible(true);
+          return this.readMap(owner, (Map<Object, Object>) constructor.newInstance(), mapKeyType, mapValueType);
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+          throw new SerializableReadException(e);
+        }
+      } else if (Map.class.isAssignableFrom(owner.getType())) {
+        try {
+          Constructor<?> constructor = owner.getType().getDeclaredConstructor();
+          constructor.setAccessible(true);
+          return this.readMap(owner, (Map<Object, Object>) constructor.newInstance(), mapKeyType, mapValueType);
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+          throw new SerializableReadException(e);
+        } catch (NoSuchMethodException e) {
+          // Ignoring NoSuchMethod.
+        }
+      }
+    }
+
+    return this.readMap(owner, mapKeyType, mapValueType);
+  }
+
+  @SuppressWarnings("unchecked")
+  @SuppressFBWarnings("NP_LOAD_OF_KNOWN_NULL_VALUE")
   private Collection<Object> readCollectionByType(Field owner, Type type, Class<?> clazz) {
     Type collectionEntryType = GenericUtils.getParameterType(Collection.class, type, 0);
     if (owner != null) {
@@ -284,37 +315,6 @@ public abstract class AbstractReader {
         : this.readList(owner, collectionEntryType);
   }
 
-  @SuppressWarnings("unchecked")
-  @SuppressFBWarnings("NP_LOAD_OF_KNOWN_NULL_VALUE")
-  private Map<Object, Object> readMapByType(Field owner, Type type) {
-    Type mapKeyType = GenericUtils.getParameterType(Map.class, type, 0);
-    Type mapValueType = GenericUtils.getParameterType(Map.class, type, 1);
-    if (owner != null) {
-      MapType mapType = owner.getAnnotation(MapType.class);
-      if (mapType != null) {
-        try {
-          var constructor = mapType.value().getDeclaredConstructor();
-          constructor.setAccessible(true);
-          return this.readMap(owner, (Map<Object, Object>) constructor.newInstance(), mapKeyType, mapValueType);
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-          throw new SerializableReadException(e);
-        }
-      } else if (Map.class.isAssignableFrom(owner.getType())) {
-        try {
-          Constructor<?> constructor = owner.getType().getDeclaredConstructor();
-          constructor.setAccessible(true);
-          return this.readMap(owner, (Map<Object, Object>) constructor.newInstance(), mapKeyType, mapValueType);
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-          throw new SerializableReadException(e);
-        } catch (NoSuchMethodException e) {
-          // Ignoring NoSuchMethod.
-        }
-      }
-    }
-
-    return this.readMap(owner, mapKeyType, mapValueType);
-  }
-
   public Object readGuessingType() {
     return this.readGuessingType(null);
   }
@@ -343,28 +343,6 @@ public abstract class AbstractReader {
 
   public abstract <C extends Map<Object, Object>> C readMap(@Nullable Field owner, C result, Type keyType, Type valueType);
 
-  public <C extends Collection<Object>> C readCollection(@Nullable Field owner, C result) {
-    return this.readCollection(owner, result, Object.class);
-  }
-
-  public <C extends Collection<Object>> C readCollection(C result, Type type) {
-    return this.readCollection(null, result, type);
-  }
-
-  public abstract <C extends Collection<Object>> C readCollection(@Nullable Field owner, C result, Type type);
-
-  public List<Object> readList(@Nullable Field owner) {
-    return this.readList(owner, Object.class);
-  }
-
-  public List<Object> readList(Type type) {
-    return this.readList(null, type);
-  }
-
-  public List<Object> readList(@Nullable Field owner, Type type) {
-    return this.readCollection(owner, new ArrayList<>(), type);
-  }
-
   public Set<Object> readSet(@Nullable Field owner) {
     return this.readSet(owner, Object.class);
   }
@@ -388,6 +366,28 @@ public abstract class AbstractReader {
   public Deque<Object> readDeque(@Nullable Field owner, Type type) {
     return this.readCollection(owner, new ArrayDeque<>(), type);
   }
+
+  public List<Object> readList(@Nullable Field owner) {
+    return this.readList(owner, Object.class);
+  }
+
+  public List<Object> readList(Type type) {
+    return this.readList(null, type);
+  }
+
+  public List<Object> readList(@Nullable Field owner, Type type) {
+    return this.readCollection(owner, new ArrayList<>(), type);
+  }
+
+  public <C extends Collection<Object>> C readCollection(@Nullable Field owner, C result) {
+    return this.readCollection(owner, result, Object.class);
+  }
+
+  public <C extends Collection<Object>> C readCollection(C result, Type type) {
+    return this.readCollection(null, result, type);
+  }
+
+  public abstract <C extends Collection<Object>> C readCollection(@Nullable Field owner, C result, Type type);
 
   public String readString() {
     return this.readString(null);
@@ -458,8 +458,8 @@ public abstract class AbstractReader {
   public void skipNode(@Nullable Field owner, Class<?> clazz) {
     if (Map.class.isAssignableFrom(clazz)) {
       this.skipMap(owner);
-    } else if (List.class.isAssignableFrom(clazz)) {
-      this.skipList(owner);
+    } else if (Collection.class.isAssignableFrom(clazz)) {
+      this.skipCollection(owner);
     } else if (clazz.isEnum()
         || String.class.isAssignableFrom(clazz)
         || Boolean.class.isAssignableFrom(clazz) || boolean.class.isAssignableFrom(clazz)
@@ -477,11 +477,11 @@ public abstract class AbstractReader {
 
   public abstract void skipMap(@Nullable Field owner);
 
-  public void skipList() {
-    this.skipList(null);
+  public void skipCollection() {
+    this.skipCollection(null);
   }
 
-  public abstract void skipList(@Nullable Field owner);
+  public abstract void skipCollection(@Nullable Field owner);
 
   public void skipString() {
     this.skipString(null);

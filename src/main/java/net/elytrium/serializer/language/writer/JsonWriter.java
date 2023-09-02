@@ -36,10 +36,6 @@ public class JsonWriter extends YamlWriter {
     super(writer);
   }
 
-  public void setSingleIndent(String singleIndent) {
-    this.singleIndent = singleIndent;
-  }
-
   @Override
   public void writeCommentStart(@Nullable Field owner, Comment.At at) {
     synchronized (this) {
@@ -108,7 +104,7 @@ public class JsonWriter extends YamlWriter {
   }
 
   @Override
-  public void writeBeginList(@Nullable Field owner) {
+  public void writeBeginCollection(@Nullable Field owner) {
     synchronized (this) {
       this.addIndent();
       this.writeRaw('[');
@@ -117,7 +113,7 @@ public class JsonWriter extends YamlWriter {
   }
 
   @Override
-  public void writeListEntry(@Nullable Field owner, Object entry) {
+  public void writeCollectionEntry(@Nullable Field owner, Object entry) {
     synchronized (this) {
       this.writeIndent();
       this.writeNode(entry, null);
@@ -125,21 +121,21 @@ public class JsonWriter extends YamlWriter {
   }
 
   @Override
-  public void writeListEntryJoin(@Nullable Field owner) {
+  public void writeCollectionEntryJoin(@Nullable Field owner) {
     synchronized (this) {
       this.writeRaw(',');
     }
   }
 
   @Override
-  public void writeListEntryEnd(@Nullable Field owner) {
+  public void writeCollectionEntryEnd(@Nullable Field owner) {
     synchronized (this) {
       this.writeLine();
     }
   }
 
   @Override
-  public void writeEndList(@Nullable Field owner) {
+  public void writeEndCollection(@Nullable Field owner) {
     synchronized (this) {
       this.removeIndent();
       this.writeIndent();
@@ -152,6 +148,10 @@ public class JsonWriter extends YamlWriter {
     synchronized (this) {
       super.writeRaw(this.config.getLineSeparator());
     }
+  }
+
+  public void setSingleIndent(String singleIndent) {
+    this.singleIndent = singleIndent;
   }
 
   private void writeIndent() {

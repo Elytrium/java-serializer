@@ -54,10 +54,6 @@ public class YamlWriter extends AbstractWriter {
     this.yamlSerializable = null;
   }
 
-  public void setSingleIndent(String singleIndent) {
-    this.singleIndent = singleIndent;
-  }
-
   @Override
   public void writeCommentStart(@Nullable Field owner, Comment.At at) {
     synchronized (this) {
@@ -135,21 +131,21 @@ public class YamlWriter extends AbstractWriter {
   }
 
   @Override
-  public void writeEmptyList(@Nullable Field owner) {
+  public void writeEmptyCollection(@Nullable Field owner) {
     synchronized (this) {
       this.writeRaw("[]");
     }
   }
 
   @Override
-  public void writeBeginList(@Nullable Field owner) {
+  public void writeBeginCollection(@Nullable Field owner) {
     synchronized (this) {
       this.writeBeginCommon();
     }
   }
 
   @Override
-  public void writeListEntry(@Nullable Field owner, Object entry) {
+  public void writeCollectionEntry(@Nullable Field owner, Object entry) {
     synchronized (this) {
       this.writeIndent();
 
@@ -161,28 +157,21 @@ public class YamlWriter extends AbstractWriter {
   }
 
   @Override
-  public void writeListEntryJoin(@Nullable Field owner) {
+  public void writeCollectionEntryJoin(@Nullable Field owner) {
     synchronized (this) {
       this.writeLine();
     }
   }
 
   @Override
-  public void writeListEntryEnd(@Nullable Field owner) {
+  public void writeCollectionEntryEnd(@Nullable Field owner) {
 
   }
 
   @Override
-  public void writeEndList(@Nullable Field owner) {
+  public void writeEndCollection(@Nullable Field owner) {
     synchronized (this) {
       this.removeIndent();
-    }
-  }
-
-  @Override
-  public void writeLine() {
-    synchronized (this) {
-      super.writeRaw(this.config.getLineSeparator());
     }
   }
 
@@ -196,7 +185,7 @@ public class YamlWriter extends AbstractWriter {
   @Override
   public void writeCharacter(@Nullable Field owner, char value) {
     synchronized (this) {
-      boolean shouldUseQuotes = this.shouldUseQuotes(value, true);
+      boolean shouldUseQuotes = YamlWriter.shouldUseQuotes(value, true, false);
       if (shouldUseQuotes) {
         this.writeRaw('"');
       }
@@ -207,20 +196,11 @@ public class YamlWriter extends AbstractWriter {
     }
   }
 
-  private boolean shouldUseQuotes(char[] characters, boolean avoidSpecial) {
-    for (char character : characters) {
-      if (this.shouldUseQuotes(character, avoidSpecial)) {
-        return true;
-      }
+  @Override
+  public void writeLine() {
+    synchronized (this) {
+      super.writeRaw(this.config.getLineSeparator());
     }
-
-    return false;
-  }
-
-  private boolean shouldUseQuotes(char value, boolean avoidSpecial) {
-    return (avoidSpecial && (value == ' ' || value == '#' || value == '"'))
-           || value == '\0' || value == '\u0007' || value == '\b' || value == '\t' || value == '\n' || value == '\u000B' || value == '\f' || value == '\r'
-           || value == '\u001B' || value == '\'' || value == '\\' || value == '\u0085' || value == '\u00A0' || value == '\u2028' || value == '\u2029';
   }
 
   private void writeString0(@Nullable Field owner, String value, boolean nodeName) {
@@ -267,10 +247,10 @@ public class YamlWriter extends AbstractWriter {
   }
 
   private void writeCharacters(char[] characters) {
-    this.writeCharacters(characters, true, true, false, true);
+    this.writeCharacters(characters, false, false, true, true, true);
   }
 
-  private void writeCharacters(char[] characters, boolean escapeNewLine, boolean doubleNewLine, boolean firstNewLine, boolean escapeSpecial) {
+  private void writeCharacters(char[] characters, boolean firstNewLine, boolean singleQuotes2Double, boolean escapeNewLine, boolean doubleNewLine, boolean escapeSpecial) {
     this.addIndent();
 
     if (firstNewLine) {
@@ -282,40 +262,45 @@ public class YamlWriter extends AbstractWriter {
 
     char highSurrogate = 0;
     for (char character : characters) {
-      if (!escapeNewLine) {
-        if (character == AbstractWriter.NEW_LINE || character == lineSeparatorChars[lineSeparatorCharsCaught]) {
-          if (character == AbstractWriter.NEW_LINE || ++lineSeparatorCharsCaught == lineSeparatorChars.length) {
-            lineSeparatorCharsCaught = 0;
-            this.writeLineAndIndent();
-
-            if (doubleNewLine) {
-              this.writeLineAndIndent();
-            }
-          }
-
-          continue;
-        } else {
-          for (int i = 0; i < lineSeparatorCharsCaught; i++) {
-            this.writeCharacter0(lineSeparatorChars[i], escapeSpecial);
-          }
-
-          lineSeparatorCharsCaught = 0;
-        }
-      }
-
-      if (highSurrogate != 0) {
-        this.writeCharacter0(Character.toCodePoint(highSurrogate, character), escapeSpecial);
-        highSurrogate = 0;
-      } else if (Character.isHighSurrogate(character)) {
-        highSurrogate = character;
+      if (singleQuotes2Double && character == '\'') {
+        this.writeRaw("''");
       } else {
-        this.writeCharacter0(character, escapeSpecial);
+        if (!escapeNewLine) {
+          if (character == AbstractWriter.NEW_LINE || character == lineSeparatorChars[lineSeparatorCharsCaught]) {
+            if (character == AbstractWriter.NEW_LINE || ++lineSeparatorCharsCaught == lineSeparatorChars.length) {
+              lineSeparatorCharsCaught = 0;
+              this.writeLineAndIndent();
+
+              if (doubleNewLine) {
+                this.writeLineAndIndent();
+              }
+            }
+
+            continue;
+          } else {
+            for (int i = 0; i < lineSeparatorCharsCaught; ++i) {
+              this.writeCharacter0(lineSeparatorChars[i], escapeSpecial);
+            }
+
+            lineSeparatorCharsCaught = 0;
+          }
+        }
+
+        if (highSurrogate != 0) {
+          this.writeCharacter0(Character.toCodePoint(highSurrogate, character), escapeSpecial);
+          highSurrogate = 0;
+        } else if (Character.isHighSurrogate(character)) {
+          highSurrogate = character;
+        } else {
+          this.writeCharacter0(character, escapeSpecial);
+        }
       }
     }
 
     if (highSurrogate != 0) {
       this.writeCharacter0(highSurrogate, escapeSpecial);
     }
+
     this.removeIndent();
   }
 
@@ -348,22 +333,20 @@ public class YamlWriter extends AbstractWriter {
             this.writeRaw("\\x");
             String result = "0" + Integer.toString(value, 16);
             this.writeRaw(result.substring(result.length() - 2));
-            break;
           } else if (Character.charCount(value) == 2) {
             this.writeRaw("\\U");
             String result = "000" + Long.toHexString(value);
             this.writeRaw(result.substring(result.length() - 8));
-            break;
           } else {
             this.writeRaw("\\u");
             String result = "000" + Integer.toString(value, 16);
             this.writeRaw(result.substring(result.length() - 4));
-            break;
           }
-        }
-
-        for (char character : Character.toChars(value)) {
-          this.writeRaw(character);
+        } else if (Character.isBmpCodePoint(value)) { // Inlined Character.toChars()
+          this.writeRaw((char) value);
+        } else {
+          this.writeRaw(Character.highSurrogate(value));
+          this.writeRaw(Character.lowSurrogate(value));
         }
       }
     }
@@ -433,6 +416,27 @@ public class YamlWriter extends AbstractWriter {
     super.writeRaw(value);
   }
 
+  public void setSingleIndent(String singleIndent) {
+    this.singleIndent = singleIndent;
+  }
+
+  private static boolean shouldUseQuotes(char[] characters, boolean avoidSpecial, boolean ignoreSingleQuotes) {
+    for (char character : characters) {
+      if (YamlWriter.shouldUseQuotes(character, avoidSpecial, ignoreSingleQuotes)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private static boolean shouldUseQuotes(char value, boolean avoidSpecial, boolean ignoreSingleQuotes) {
+    return (avoidSpecial && (value == ' ' || value == '#' || value == '"'))
+           || (!ignoreSingleQuotes && value == '\'')
+           || value == '\0' || value == '\u0007' || value == '\b' || value == '\t' || value == '\n' || value == '\u000B' || value == '\f' || value == '\r'
+           || value == '\u001B' || value == '\\' || value == '\u0085' || value == '\u00A0' || value == '\u2028' || value == '\u2029';
+  }
+
   public enum StringStyle {
 
     /**
@@ -441,7 +445,7 @@ public class YamlWriter extends AbstractWriter {
      */
     NOT_QUOTED((writer, string) -> {
       char[] characters = string.toCharArray();
-      boolean shouldUseQuotes = writer.shouldUseQuotes(characters, true);
+      boolean shouldUseQuotes = YamlWriter.shouldUseQuotes(characters, true, false);
 
       if (shouldUseQuotes) {
         writer.writeRaw('"');
@@ -459,28 +463,17 @@ public class YamlWriter extends AbstractWriter {
      */
     SINGLE_QUOTED((writer, string) -> {
       char[] characters = string.toCharArray();
-      boolean shouldUseQuotes = writer.shouldUseQuotes(characters, false);
-
-      if (shouldUseQuotes) {
-        writer.writeRaw('"');
-      } else {
-        writer.writeRaw('\'');
-      }
-
-      writer.writeCharacters(string.replace("'", "''").toCharArray(), false, true, false, shouldUseQuotes);
-
-      if (shouldUseQuotes) {
-        writer.writeRaw('"');
-      } else {
-        writer.writeRaw('\'');
-      }
+      boolean shouldUseQuotes = YamlWriter.shouldUseQuotes(characters, false, true);
+      writer.writeRaw(shouldUseQuotes ? '"' : '\'');
+      writer.writeCharacters(characters, false, true, false, true, shouldUseQuotes);
+      writer.writeRaw(shouldUseQuotes ? '"' : '\'');
     }),
     /**
      * Preferably single line, line separator will be escaped, quoted with double quote {@code "}.
      */
     DOUBLE_QUOTED((writer, string) -> {
       writer.writeRaw('"');
-      writer.writeCharacters(string.toCharArray(), true, true, false, true);
+      writer.writeCharacters(string.toCharArray(), false, false, true, true, true);
       writer.writeRaw('"');
     }),
     /**
@@ -488,7 +481,7 @@ public class YamlWriter extends AbstractWriter {
      */
     DOUBLE_QUOTED_MULTILINE((writer, string) -> {
       writer.writeRaw('"');
-      writer.writeCharacters(string.toCharArray(), false, true, false, true);
+      writer.writeCharacters(string.toCharArray(), false, false, false, true, true);
       writer.writeRaw('"');
     }),
     /**
@@ -503,10 +496,10 @@ public class YamlWriter extends AbstractWriter {
       } else if (string.endsWith(writer.config.getDoubledLineSeparator())) {
         writer.writeRaw(">+");
       } else {
-        writer.writeRaw(">");
+        writer.writeRaw('>');
       }
 
-      writer.writeCharacters(string.toCharArray(), false, true, true, false);
+      writer.writeCharacters(string.toCharArray(), true, false, false, true, false);
     }),
     /**
      * Preferably multi line, quoted with {@code >-}, new lines will be replaced with spaces,
@@ -518,7 +511,7 @@ public class YamlWriter extends AbstractWriter {
       }
 
       writer.writeRaw(">-");
-      writer.writeCharacters(string.toCharArray(), false, true, true, false);
+      writer.writeCharacters(string.toCharArray(), true, false, false, true, false);
     }),
     /**
      * Preferably multi line, quoted with {@code >+}, new lines will be replaced with spaces,
@@ -526,13 +519,8 @@ public class YamlWriter extends AbstractWriter {
      * but {@code >-} will be used if new lines were found at the end of the string.
      */
     MULTILINE_FOLDED_AUTO_KEPT((writer, string) -> {
-      if (!string.endsWith(writer.config.getLineSeparator())) {
-        writer.writeRaw(">-");
-      } else {
-        writer.writeRaw(">+");
-      }
-
-      writer.writeCharacters(string.toCharArray(), false, true, true, false);
+      writer.writeRaw(string.endsWith(writer.config.getLineSeparator()) ? ">+" : ">-");
+      writer.writeCharacters(string.toCharArray(), true, false, false, true, false);
     }),
     /**
      * Preferably multi line, quoted with {@code |}, single new line at the end will be kept,
@@ -544,10 +532,10 @@ public class YamlWriter extends AbstractWriter {
       } else if (string.endsWith(writer.config.getDoubledLineSeparator())) {
         writer.writeRaw("|+");
       } else {
-        writer.writeRaw("|");
+        writer.writeRaw('|');
       }
 
-      writer.writeCharacters(string.toCharArray(), false, false, true, false);
+      writer.writeCharacters(string.toCharArray(), true, false, false, false, false);
     }),
     /**
      * Preferably multi line, quoted with {@code |},
@@ -559,20 +547,15 @@ public class YamlWriter extends AbstractWriter {
       }
 
       writer.writeRaw("|-");
-      writer.writeCharacters(string.toCharArray(), false, false, true, false);
+      writer.writeCharacters(string.toCharArray(), true, false, false, false, false);
     }),
     /**
      * Preferably multi line, quoted with {@code |+}, all new lines from end will be kept,
      * but {@code |-} will be used if no new lines were found at the end of the string.
      */
     MULTILINE_LITERAL_AUTO_KEPT((writer, string) -> {
-      if (!string.endsWith(writer.config.getLineSeparator())) {
-        writer.writeRaw("|- ");
-      } else {
-        writer.writeRaw("|+ ");
-      }
-
-      writer.writeCharacters(string.toCharArray(), false, false, true, false);
+      writer.writeRaw(string.endsWith(writer.config.getLineSeparator()) ? "|+ " : "|- ");
+      writer.writeCharacters(string.toCharArray(), true, false, false, false, false);
     });
 
     private final BiConsumer<YamlWriter, String> writeFunction;

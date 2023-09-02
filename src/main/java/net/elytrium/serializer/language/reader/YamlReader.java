@@ -210,7 +210,7 @@ public class YamlReader extends AbstractReader {
   public String readNodeName(@Nullable Field owner) {
     synchronized (this) {
       char marker = this.readRawIgnoreEmptyAndNewLines();
-      return marker == '\0' ? null : this.readNodeNameByMarker(owner, marker);
+      return marker == '\0' ? null : this.readNodeNameFromMarker(owner, marker);
     }
   }
 
@@ -238,7 +238,7 @@ public class YamlReader extends AbstractReader {
   @Override
   public Object readGuessingType(@Nullable Field owner) {
     synchronized (this) {
-      return this.readGuessingTypeByMarker(owner, this.readRawIgnoreEmpty());
+      return this.readGuessingTypeFromMarker(owner, this.readRawIgnoreEmpty());
     }
   }
 
@@ -251,14 +251,14 @@ public class YamlReader extends AbstractReader {
         this.setTempRestoreNewLine();
       }
 
-      return this.readMapByMarker(owner, result, keyType, valueType, marker);
+      return this.readMapFromMarker(owner, result, keyType, valueType, marker);
     }
   }
 
   @Override
   public <C extends Collection<Object>> C readCollection(@Nullable Field owner, C result, Type type) {
     synchronized (this) {
-      return this.readCollectionByMarker(owner, result, type, this.readRawIgnoreEmpty());
+      return this.readCollectionFromMarker(owner, result, type, this.readRawIgnoreEmpty());
     }
   }
 
@@ -267,104 +267,6 @@ public class YamlReader extends AbstractReader {
     synchronized (this) {
       return this.readCharacterFromMarker(owner, this.readRawIgnoreEmpty());
     }
-  }
-
-  private Character readCharacterFromMarker(@Nullable Field owner, char marker) {
-    Character result = null;
-    switch (marker) {
-      case '"' -> {
-        while ((marker = this.readRaw()) != '"') {
-          if (result == null) {
-            if (marker == '\\') {
-              char[] characters = Character.toChars(this.readEscapedCharacter());
-              if (characters.length != 1) {
-                throw new IllegalStateException("Supplementary char cannot be stored in Character");
-              }
-
-              result = characters[0];
-            } else {
-              result = marker;
-            }
-          } else if (marker == '\\') {
-            this.readRaw(); // To ensure the reading doesn't stop at \"
-          }
-        }
-      }
-      case '\'' -> {
-        while (true) {
-          marker = this.readRaw();
-          if (marker == '\'') {
-            if (this.readRaw() == '\'') { // 'text1 ''text2'' text3' reads as "text 'text2' text3".
-              if (result == null) {
-                result = '\'';
-              }
-            } else {
-              this.setReuseBuffer();
-              break;
-            }
-          } else if (result == null) {
-            result = marker;
-          }
-        }
-      }
-      default -> {
-        if (this.isNullSkippedByMarker(marker)) {
-          return null;
-        }
-
-        while (!this.isEndMarker(marker) && (marker != ',' || this.bracketOpened) && !this.skipComments(owner, marker, false)) {
-          if (result == null) { // Set the result only after we ensure we not at end of line/field.
-            result = marker;
-          }
-
-          marker = this.readRaw();
-        }
-      }
-    }
-
-    return result;
-  }
-
-  private int readEscapedCharacter() {
-    synchronized (this) {
-      char marker;
-      return switch (marker = this.readRaw()) {
-        case '0' -> '\0';
-        case 'a' -> '\u0007';
-        case 'b' -> '\b';
-        case 't' -> '\t';
-        case 'n' -> '\n';
-        case 'v' -> '\u000B';
-        case 'f' -> '\f';
-        case 'r' -> '\r';
-        case 'e' -> '\u001B';
-        case ' ' -> ' ';
-        case '"' -> '\"';
-        case '\\' -> '\\';
-        case 'N' -> '\u0085';
-        case '_' -> '\u00A0';
-        case 'L' -> '\u2028';
-        case 'P' -> '\u2029';
-        case 'x' -> this.readHexChar(2);
-        case 'u' -> this.readHexChar(4);
-        case 'U' -> this.readHexChar(8);
-        default -> throw new IllegalStateException("Invalid escape character: \\" + marker);
-      };
-    }
-  }
-
-  private int readHexChar(int size) {
-    StringBuilder hex = new StringBuilder();
-    for (int i = 0; i < size; ++i) {
-      char character = this.readRaw();
-      if (this.isEndMarker(character)) {
-        throw new IllegalStateException("Got new line while reading hex char");
-      }
-
-      hex.append(character);
-    }
-
-    return Integer.valueOf(hex.toString(), 16);
   }
 
   @Override
@@ -390,69 +292,124 @@ public class YamlReader extends AbstractReader {
     }
   }
 
-  private List<Object> readListByMarker(@Nullable Field owner, char marker) {
-    return this.readCollectionByMarker(owner, new ArrayList<>(), Object.class, marker);
+  @Override
+  public String readString(@Nullable Field owner) {
+    synchronized (this) {
+      return this.readStringFromMarker(owner, this.readRawIgnoreEmpty(), false);
+    }
   }
 
-  @SuppressFBWarnings("SA_FIELD_SELF_COMPARISON")
-  private <C extends Collection<Object>> C readCollectionByMarker(@Nullable Field owner, C result, Type type, char marker) {
-    if (this.skipComments(owner, marker, false)) {
-      marker = AbstractReader.NEW_LINE;
+  private String readNodeNameFromMarker(@Nullable Field owner, char marker) {
+    synchronized (this) {
+      this.nodeIndent = this.currentIndent;
     }
 
-    switch (marker) {
-      case '[': {
-        char nextMarker = this.readRawIgnoreEmptyAndNewLines();
-        while (nextMarker != ']') {
-          result.add(this.readByType0(owner, type));
-          nextMarker = this.readRawIgnoreEmptyAndNewLines();
-        }
-
+    while (true) {
+      if (this.skipComments(owner, marker, false) || this.skipComments(owner, this.readRawIgnoreEmpty(), true)) {
+        marker = this.readRaw();
+      } else {
         break;
       }
-      case AbstractReader.NEW_LINE: {
-        this.skipComments(owner, this.readRawIgnoreEmpty(), true);
-        char nextMarker = this.readRawIgnoreEmpty();
-        if (nextMarker != '-') {
-          throw new IllegalStateException("Got unknown marker when reading list: " + nextMarker);
+    }
+
+    String nodeName;
+    if (marker == '"' || marker == '\'') {
+      nodeName = this.readStringFromMarker(owner, marker, true);
+    } else {
+      StringBuilder result = new StringBuilder(12);
+      while (true) {
+        while (marker != ':') {
+          if (this.isEndMarker(marker)) {
+            throw new IllegalStateException("Got a new line in node name: " + result);
+          }
+
+          result.append(marker);
+          marker = this.readRaw();
         }
-      } // Got '-' after newline, fall through here.
-      case '-': {
-        this.nodeIndent = this.currentIndent;
-        char nextMarker = '-';
-        int correctIndent = this.currentIndent;
-        while (nextMarker == '-' && correctIndent == this.currentIndent) {
-          this.setTempRestoreNewLine();
-          result.add(this.readByType0(null, type));
-          this.unsetTempRestoreNewLine();
-          nextMarker = this.readRawIgnoreEmptyAndNewLines();
-          if (this.skipComments(owner, nextMarker, false)) {
-            nextMarker = this.readRawIgnoreEmptyAndNewLines();
+
+        marker = this.readRaw();
+        if (Character.isWhitespace(marker)) {
+          this.setReuseBuffer();
+          break;
+        }
+
+        result.append(':');
+      }
+
+      nodeName = result.toString();
+    }
+
+    return nodeName;
+  }
+
+  private Object readGuessingTypeFromMarker(@Nullable Field owner, char marker) {
+    return switch (marker) {
+      case AbstractReader.NEW_LINE -> {
+        char nextMarker = this.readRawIgnoreEmpty();
+        this.setReuseBuffer();
+        yield nextMarker == '-' ? this.readListFromMarker(owner, marker) : this.readMapFromMarker(owner, marker);
+      }
+      case '-' -> {
+        this.setReuseBuffer();
+        this.setSeek();
+        String string = this.readString(owner);
+        if (string != null) {
+          try {
+            try {
+              yield Long.parseLong(string);
+            } catch (NumberFormatException e) {
+              yield Double.parseDouble(string);
+            }
+          } catch (NumberFormatException ignored) {
+            // Exception ignored as the string doesn't contain negative number here, but contains a list.
           }
         }
 
-        this.setReuseBuffer();
-        break;
+        this.unsetSeek();
+        yield this.readListFromMarker(owner, AbstractReader.NEW_LINE);
       }
-      default: {
-        if (this.readGuessingTypeByMarker(null, marker) == null) {
-          return null;
+      case '[' -> this.readListFromMarker(owner, marker);
+      case '{' -> this.readMapFromMarker(owner, marker);
+      case '"', '\'', '>', '|' -> this.readStringFromMarker(owner, marker, false);
+      default -> {
+        if (this.isNullSkippedFromMarker(marker)) {
+          yield null;
+        }
+
+        this.setSeekFromMarker(marker);
+        String string = this.readStringFromMarker(owner, marker, false);
+        if (string == null) {
+          yield null;
+        }
+
+        if (string.endsWith(":") || string.endsWith(": ") || string.contains(": ")) {
+          this.unsetSeek();
+          this.unsetTempRestoreNewLine();
+          yield this.readMapFromMarker(owner, AbstractReader.NEW_LINE);
         } else {
-          throw new IllegalStateException("Got unknown marker when reading list: " + marker);
+          this.clearSeek();
+          try {
+            try {
+              yield Long.parseLong(string);
+            } catch (NumberFormatException e) {
+              yield Double.parseDouble(string);
+            }
+          } catch (NumberFormatException e) {
+            yield string;
+          }
         }
       }
-    }
-
-    return result;
+    };
   }
 
-  private Map<Object, Object> readMapByMarker(@Nullable Field owner, char marker) {
-    return this.readMapByMarker(owner, new LinkedHashMap<>(), Object.class, Object.class, marker);
+  private Map<Object, Object> readMapFromMarker(@Nullable Field owner, char marker) {
+    return this.readMapFromMarker(owner, new LinkedHashMap<>(), Object.class, Object.class, marker);
   }
 
+  @SuppressWarnings("DuplicatedCode")
   @SuppressFBWarnings("SA_FIELD_SELF_COMPARISON")
-  private <C extends Map<Object, Object>> C readMapByMarker(@Nullable Field owner, C result, Type keyType, Type valueType, char marker) {
-    if (this.skipComments(owner, marker, false)) {
+  private <C extends Map<Object, Object>> C readMapFromMarker(@Nullable Field owner, C result, Type keyType, Type valueType, char marker) {
+    if (this.skipComments(owner, marker, false)) { // TODO сделать чтобы map:#comm не читалось
       marker = AbstractReader.NEW_LINE;
     }
 
@@ -470,7 +427,7 @@ public class YamlReader extends AbstractReader {
       case '{' -> {
         this.bracketOpened = true;
         while (nextMarker != '}') {
-          this.readMapEntry(owner, keyType, valueType, this.readNodeNameByMarker(null, nextMarker), result);
+          this.readMapEntry(owner, keyType, valueType, this.readNodeNameFromMarker(null, nextMarker), result);
           nextMarker = this.readRawIgnoreEmptyAndNewLines();
         }
 
@@ -480,7 +437,7 @@ public class YamlReader extends AbstractReader {
         this.bracketOpened = false;
         int correctIndent = this.currentIndent;
         while (nextMarker != '\0' && correctIndent == this.currentIndent) {
-          this.readMapEntry(owner, keyType, valueType, this.readNodeNameByMarker(null, nextMarker), result);
+          this.readMapEntry(owner, keyType, valueType, this.readNodeNameFromMarker(null, nextMarker), result);
           nextMarker = this.readRawIgnoreEmptyAndNewLines();
           if (this.skipComments(owner, nextMarker, false)) {
             nextMarker = this.readRawIgnoreEmptyAndNewLines();
@@ -491,7 +448,7 @@ public class YamlReader extends AbstractReader {
         this.bracketOpened = previousBracketOpened;
       }
       default -> {
-        if (this.readGuessingTypeByMarker(null, marker) == null) {
+        if (this.isNullSkippedFromMarker(marker)) {
           return null;
         } else {
           throw new IllegalStateException("Got unknown marker when reading map: " + marker);
@@ -551,7 +508,7 @@ public class YamlReader extends AbstractReader {
           throw new IllegalStateException("Class " + keyClazz + " for map key are not supported yet!");
         }
 
-        if (Map.class.isAssignableFrom(clazz) || List.class.isAssignableFrom(clazz)) {
+        if (Map.class.isAssignableFrom(clazz) || Collection.class.isAssignableFrom(clazz)) {
           throw new IllegalStateException("Class " + clazz + " for map key is not supported!");
         }
 
@@ -564,134 +521,13 @@ public class YamlReader extends AbstractReader {
     result.put(key, this.readByType0(owner, valueType));
   }
 
-  private Object readByType0(@Nullable Field owner, Type type) {
-    Object result = this.readByType(owner, type);
-    if (type == Integer.class || type == int.class) {
-      return ((Long) result).intValue();
-    } else if (type == Short.class || type == short.class) {
-      return ((Long) result).shortValue();
-    } else if (type == Byte.class || type == byte.class) {
-      return ((Long) result).byteValue();
-    } else if (type == Float.class || type == float.class) {
-      return ((Double) result).floatValue();
-    } else {
-      return result;
-    }
-  }
-
-  private Object readGuessingTypeByMarker(@Nullable Field owner, char marker) {
-    return switch (marker) {
-      case AbstractReader.NEW_LINE -> {
-        char nextMarker = this.readRawIgnoreEmpty();
-        this.setReuseBuffer();
-        yield nextMarker == '-' ? this.readListByMarker(owner, marker) : this.readMapByMarker(owner, marker);
-      }
-      case '-' -> {
-        this.setReuseBuffer();
-        this.setSeek();
-        String string = this.readString(owner);
-        if (string != null) {
-          try {
-            try {
-              yield Long.parseLong(string);
-            } catch (NumberFormatException e) {
-              yield Double.parseDouble(string);
-            }
-          } catch (NumberFormatException ignored) {
-            // Exception ignored as the string doesn't contain negative number here, but contains a list.
-          }
-        }
-
-        this.unsetSeek();
-        yield this.readListByMarker(owner, AbstractReader.NEW_LINE);
-      }
-      case '[' -> this.readListByMarker(owner, marker);
-      case '{' -> this.readMapByMarker(owner, marker);
-      case '"', '\'', '>', '|' -> this.readStringFromMarker(owner, marker, false);
-      default -> {
-        if (this.isNullSkippedByMarker(marker)) {
-          yield null;
-        }
-
-        this.setSeekFromMarker(marker);
-        String string = this.readStringFromMarker(owner, marker, false);
-        if (string == null) {
-          yield null;
-        }
-
-        if (string.endsWith(":") || string.endsWith(": ") || string.contains(": ")) {
-          this.unsetSeek();
-          this.unsetTempRestoreNewLine();
-          yield this.readMapByMarker(owner, AbstractReader.NEW_LINE);
-        } else {
-          this.clearSeek();
-          try {
-            try {
-              yield Long.parseLong(string);
-            } catch (NumberFormatException e) {
-              yield Double.parseDouble(string);
-            }
-          } catch (NumberFormatException e) {
-            yield string;
-          }
-        }
-      }
-    };
-  }
-
-  @Override
-  public void skipGuessingType(@Nullable Field owner) {
-    synchronized (this) {
-      this.skipGuessingTypeByMarker(owner, this.readRawIgnoreEmpty());
-    }
-  }
-
-  private void skipGuessingTypeByMarker(@Nullable Field owner, char marker) {
-    switch (marker) {
-      case AbstractReader.NEW_LINE -> {
-        char nextMarker = this.readRawIgnoreEmpty();
-        this.setReuseBuffer();
-        if (nextMarker == '-') {
-          this.skipListByMarker(owner, marker);
-        } else {
-          this.skipMapByMarker(owner, marker);
-        }
-      }
-      case '-' -> {
-        this.setReuseBuffer();
-        this.skipListByMarker(owner, NEW_LINE);
-      }
-      case '[' -> this.skipListByMarker(owner, marker);
-      case '{' -> this.skipMapByMarker(owner, marker);
-      case '"', '\'', '>', '|' -> this.skipStringFromMarker(owner, marker, false);
-      default -> {
-        if (this.isNullSkippedByMarker(marker)) {
-          return;
-        }
-
-        this.setSeekFromMarker(marker);
-        String string = this.readStringFromMarker(owner, marker, false);
-        if (string != null && (string.endsWith(":") || string.endsWith(": ") || string.contains(": "))) {
-          this.unsetSeek();
-          this.unsetTempRestoreNewLine();
-          this.skipMapByMarker(owner, NEW_LINE);
-        } else {
-          this.clearSeek();
-        }
-      }
-    }
-  }
-
-  @Override
-  public void skipList(@Nullable Field owner) {
-    synchronized (this) {
-      this.skipListByMarker(owner, this.readRawIgnoreEmpty());
-    }
+  private List<Object> readListFromMarker(@Nullable Field owner, char marker) {
+    return this.readCollectionFromMarker(owner, new ArrayList<>(), Object.class, marker);
   }
 
   @SuppressFBWarnings("SA_FIELD_SELF_COMPARISON")
-  private void skipListByMarker(@Nullable Field owner, char marker) {
-    if (this.skipComments(owner, marker, false)) {
+  private <C extends Collection<Object>> C readCollectionFromMarker(@Nullable Field owner, C result, Type type, char marker) {
+    if (this.skipComments(owner, marker, false)) { // TODO сделать чтобы collection:#comm не читалось
       marker = AbstractReader.NEW_LINE;
     }
 
@@ -699,7 +535,7 @@ public class YamlReader extends AbstractReader {
       case '[': {
         char nextMarker = this.readRawIgnoreEmptyAndNewLines();
         while (nextMarker != ']') {
-          this.skipGuessingType(owner);
+          result.add(this.readByType0(owner, type));
           nextMarker = this.readRawIgnoreEmptyAndNewLines();
         }
 
@@ -718,7 +554,7 @@ public class YamlReader extends AbstractReader {
         int correctIndent = this.currentIndent;
         while (nextMarker == '-' && correctIndent == this.currentIndent) {
           this.setTempRestoreNewLine();
-          this.skipGuessingType(owner);
+          result.add(this.readByType0(null, type));
           this.unsetTempRestoreNewLine();
           nextMarker = this.readRawIgnoreEmptyAndNewLines();
           if (this.skipComments(owner, nextMarker, false)) {
@@ -730,88 +566,129 @@ public class YamlReader extends AbstractReader {
         break;
       }
       default: {
-        if (this.isNullSkippedByMarker(marker)) {
+        if (this.isNullSkippedFromMarker(marker)) {
+          return null;
+        } else {
           throw new IllegalStateException("Got unknown marker when reading list: " + marker);
         }
       }
     }
+
+    return result;
   }
 
-  @Override
-  public void skipMap(@Nullable Field owner) {
-    boolean startOfFile = this.startOfFile;
-    synchronized (this) {
-      char marker = this.readRawIgnoreEmpty();
-      if (startOfFile) {
-        this.setTempRestoreNewLine();
-      }
-
-      this.skipMapByMarker(owner, marker);
-    }
+  private Object readByType0(@Nullable Field owner, Type type) {
+    Object result = this.readByType(owner, type);
+    return type == Integer.class || type == int.class ? Integer.valueOf(((Long) result).intValue())
+        : type == Short.class || type == short.class ? Short.valueOf(((Long) result).shortValue())
+        : type == Byte.class || type == byte.class ? Byte.valueOf(((Long) result).byteValue())
+        : type == Float.class || type == float.class ? Float.valueOf(((Double) result).floatValue())
+        : result; // Long || Double
   }
 
-  @SuppressFBWarnings("SA_FIELD_SELF_COMPARISON")
-  private void skipMapByMarker(@Nullable Field owner, char marker) {
-    if (this.skipComments(owner, marker, false)) {
-      marker = AbstractReader.NEW_LINE;
-    }
-
-    char nextMarker = this.readRawIgnoreEmptyAndNewLines();
+  private Character readCharacterFromMarker(@Nullable Field owner, char marker) {
+    Character result = null;
     switch (marker) {
-      case '{' -> {
-        while (nextMarker != '}') {
-          this.skipStringFromMarker(owner, nextMarker, true);
-          this.skipGuessingType(owner);
-          nextMarker = this.readRawIgnoreEmptyAndNewLines();
-        }
-      }
-      case AbstractReader.NEW_LINE -> {
-        int correctIndent = this.currentIndent;
-        while (nextMarker != '\0' && correctIndent == this.currentIndent) {
-          this.skipStringFromMarker(owner, nextMarker, true);
-          this.skipGuessingType(owner);
-          nextMarker = this.readRawIgnoreEmptyAndNewLines();
-          if (this.skipComments(owner, nextMarker, false)) {
-            nextMarker = this.readRawIgnoreEmptyAndNewLines();
+      case '"' -> {
+        while ((marker = this.readRaw()) != '"') {
+          if (result == null) {
+            if (marker == '\\') {
+              int character = this.readEscapedCharacter();
+              if (Character.isBmpCodePoint(character)) {
+                result = (char) character;
+              } else {
+                throw new IllegalStateException("Supplementary char cannot be stored in Character");
+              }
+            } else {
+              result = marker;
+            }
+          } else if (marker == '\\') {
+            this.readRaw(); // To ensure the reading doesn't stop at \"
           }
         }
-
-        this.setReuseBuffer();
+      }
+      case '\'' -> {
+        while (true) {
+          marker = this.readRaw();
+          if (marker == '\'') {
+            if (this.readRaw() == '\'') { // 'text1 ''text2'' text3' reads as "text 'text2' text3".
+              if (result == null) {
+                result = '\'';
+              }
+            } else {
+              this.setReuseBuffer();
+              break;
+            }
+          } else if (result == null) {
+            result = marker;
+          }
+        }
       }
       default -> {
-        if (this.isNullSkippedByMarker(marker)) {
-          throw new IllegalStateException("Got unknown marker when reading map: " + marker);
+        if (this.isNullSkippedFromMarker(marker)) {
+          return null;
+        }
+
+        while (!this.isEndMarker(marker) && (marker != ',' || this.bracketOpened) && !this.skipComments(owner, marker, false)) {
+          if (result == null) { // Set the result only after we ensure we not at end of line/field.
+            result = marker;
+          }
+
+          marker = this.readRaw();
         }
       }
     }
+
+    return result;
   }
 
-  private boolean isNullSkippedByMarker(char marker) {
-    this.setSeek();
-    if (marker == 'n' && this.readRaw() == 'u' && this.readRaw() == 'l' && this.readRaw() == 'l') {
-      char endMarker = this.readRawIgnoreEmpty();
-      if (this.isEndMarker(endMarker) || (endMarker == ',' && this.bracketOpened)) {
-        this.clearSeek();
-        return true;
-      }
-    }
-
-    this.unsetSeek();
-    return false;
-  }
-
-  @Override
-  public String readString(@Nullable Field owner) {
+  private int readEscapedCharacter() {
     synchronized (this) {
-      return this.readStringFromMarker(owner, this.readRawIgnoreEmpty(), false);
+      char marker;
+      return switch (marker = this.readRaw()) {
+        case '0' -> '\0';
+        case 'a' -> '\u0007';
+        case 'b' -> '\b';
+        case 't' -> '\t';
+        case 'n' -> '\n';
+        case 'v' -> '\u000B';
+        case 'f' -> '\f';
+        case 'r' -> '\r';
+        case 'e' -> '\u001B';
+        case ' ' -> ' ';
+        case '"' -> '\"';
+        case '\\' -> '\\';
+        case 'N' -> '\u0085';
+        case '_' -> '\u00A0';
+        case 'L' -> '\u2028';
+        case 'P' -> '\u2029';
+        case 'x' -> this.readHexChar(2);
+        case 'u' -> this.readHexChar(4);
+        case 'U' -> this.readHexChar(8);
+        default -> throw new IllegalStateException("Invalid escape character: \\" + marker);
+      };
     }
+  }
+
+  private int readHexChar(int size) {
+    StringBuilder hex = new StringBuilder(size);
+    for (int i = 0; i < size; ++i) {
+      char character = this.readRaw();
+      if (this.isEndMarker(character)) {
+        throw new IllegalStateException("Got new line while reading hex char");
+      }
+
+      hex.append(character);
+    }
+
+    return Integer.parseInt(hex.toString(), 16);
   }
 
   private String readStringFromMarker(@Nullable Field owner, char marker, boolean nodeName) {
     StringBuilder result = new StringBuilder();
     switch (marker) {
       case '"' -> {
-        if (!nodeName && this.yamlSerializable != null && owner != null) {
+        if (owner != null && !nodeName && this.yamlSerializable != null) {
           this.yamlSerializable.saveStringStyle(owner, YamlWriter.StringStyle.DOUBLE_QUOTED);
         }
 
@@ -837,8 +714,15 @@ public class YamlReader extends AbstractReader {
             newLineCount = 0;
 
             if (marker == '\\') {
-              for (char character : Character.toChars(this.readEscapedCharacter())) {
-                result.append(character);
+              // Inlined Character.toChars()
+              int character = this.readEscapedCharacter();
+              if (Character.isBmpCodePoint(character)) {
+                result.append((char) character);
+              } else if (Character.isValidCodePoint(character)) {
+                result.append(Character.highSurrogate(character));
+                result.append(Character.lowSurrogate(character));
+              } else {
+                throw new IllegalArgumentException(String.format("Not a valid Unicode code point: 0x%X", character));
               }
             } else {
               result.append(marker);
@@ -854,7 +738,7 @@ public class YamlReader extends AbstractReader {
         }
       }
       case '\'' -> {
-        if (!nodeName && this.yamlSerializable != null && owner != null) {
+        if (owner != null && !nodeName && this.yamlSerializable != null) {
           this.yamlSerializable.saveStringStyle(owner, YamlWriter.StringStyle.SINGLE_QUOTED);
         }
 
@@ -901,13 +785,13 @@ public class YamlReader extends AbstractReader {
         }
       }
       default -> {
-        if (!nodeName && (marker == '|' || marker == '>')) {
-          this.readMultilineStringFromMarker(owner, marker, result);
+        if (marker == '#') {
+          this.skipComments(owner, marker, false);
           break;
         }
 
-        if (marker == '#') {
-          this.skipComments(owner, marker, false);
+        if (!nodeName && (marker == '|' || marker == '>')) {
+          this.readMultilineStringFromMarker(owner, marker, result);
           break;
         }
 
@@ -1055,6 +939,168 @@ public class YamlReader extends AbstractReader {
     }
 
     this.setReuseBuffer();
+  }
+
+  @Override
+  public void skipGuessingType(@Nullable Field owner) {
+    synchronized (this) {
+      this.skipGuessingTypeFromMarker(owner, this.readRawIgnoreEmpty());
+    }
+  }
+
+  private void skipGuessingTypeFromMarker(@Nullable Field owner, char marker) {
+    switch (marker) {
+      case AbstractReader.NEW_LINE -> {
+        char nextMarker = this.readRawIgnoreEmpty();
+        this.setReuseBuffer();
+        if (nextMarker == '-') {
+          this.skipCollectionFromMarker(owner, marker);
+        } else {
+          this.skipMapFromMarker(owner, marker);
+        }
+      }
+      case '-' -> {
+        this.setReuseBuffer();
+        this.skipCollectionFromMarker(owner, NEW_LINE);
+      }
+      case '[' -> this.skipCollectionFromMarker(owner, marker);
+      case '{' -> this.skipMapFromMarker(owner, marker);
+      case '"', '\'', '>', '|' -> this.skipStringFromMarker(owner, marker, false);
+      default -> {
+        if (this.isNullSkippedFromMarker(marker)) {
+          return;
+        }
+
+        this.setSeekFromMarker(marker);
+        String string = this.readStringFromMarker(owner, marker, false);
+        if (string != null && (string.endsWith(":") || string.endsWith(": ") || string.contains(": "))) {
+          this.unsetSeek();
+          this.unsetTempRestoreNewLine();
+          this.skipMapFromMarker(owner, NEW_LINE);
+        } else {
+          this.clearSeek();
+        }
+      }
+    }
+  }
+
+  @Override
+  public void skipCollection(@Nullable Field owner) {
+    synchronized (this) {
+      this.skipCollectionFromMarker(owner, this.readRawIgnoreEmpty());
+    }
+  }
+
+  @SuppressFBWarnings("SA_FIELD_SELF_COMPARISON")
+  private void skipCollectionFromMarker(@Nullable Field owner, char marker) {
+    if (this.skipComments(owner, marker, false)) {
+      marker = AbstractReader.NEW_LINE;
+    }
+
+    switch (marker) {
+      case '[': {
+        char nextMarker = this.readRawIgnoreEmptyAndNewLines();
+        while (nextMarker != ']') {
+          this.skipGuessingType(owner);
+          nextMarker = this.readRawIgnoreEmptyAndNewLines();
+        }
+
+        break;
+      }
+      case AbstractReader.NEW_LINE: {
+        this.skipComments(owner, this.readRawIgnoreEmpty(), true);
+        char nextMarker = this.readRawIgnoreEmpty();
+        if (nextMarker != '-') {
+          throw new IllegalStateException("Got unknown marker when reading list: " + nextMarker);
+        }
+      } // Got '-' after newline, fall through here.
+      case '-': {
+        this.nodeIndent = this.currentIndent;
+        char nextMarker = '-';
+        int correctIndent = this.currentIndent;
+        while (nextMarker == '-' && correctIndent == this.currentIndent) {
+          this.setTempRestoreNewLine();
+          this.skipGuessingType(owner);
+          this.unsetTempRestoreNewLine();
+          nextMarker = this.readRawIgnoreEmptyAndNewLines();
+          if (this.skipComments(owner, nextMarker, false)) {
+            nextMarker = this.readRawIgnoreEmptyAndNewLines();
+          }
+        }
+
+        this.setReuseBuffer();
+        break;
+      }
+      default: {
+        if (!this.isNullSkippedFromMarker(marker)) {
+          throw new IllegalStateException("Got unknown marker when reading list: " + marker);
+        }
+      }
+    }
+  }
+
+  @Override
+  public void skipMap(@Nullable Field owner) {
+    boolean startOfFile = this.startOfFile;
+    synchronized (this) {
+      char marker = this.readRawIgnoreEmpty();
+      if (startOfFile) {
+        this.setTempRestoreNewLine();
+      }
+
+      this.skipMapFromMarker(owner, marker);
+    }
+  }
+
+  @SuppressWarnings("DuplicatedCode")
+  @SuppressFBWarnings("SA_FIELD_SELF_COMPARISON")
+  private void skipMapFromMarker(@Nullable Field owner, char marker) {
+    if (this.skipComments(owner, marker, false)) {
+      marker = AbstractReader.NEW_LINE;
+    }
+
+    char nextMarker;
+    if (this.tempRestoreNewLine) {
+      nextMarker = marker;
+      marker = AbstractReader.NEW_LINE;
+      this.unsetTempRestoreNewLine();
+    } else {
+      nextMarker = this.readRawIgnoreEmptyAndNewLines();
+    }
+
+    boolean previousBracketOpened = this.bracketOpened;
+    switch (marker) {
+      case '{' -> {
+        this.bracketOpened = true;
+        while (nextMarker != '}') {
+          this.skipStringFromMarker(owner, nextMarker, true);
+          this.skipGuessingType(owner);
+          nextMarker = this.readRawIgnoreEmptyAndNewLines();
+        }
+
+        this.bracketOpened = previousBracketOpened;
+      }
+      case AbstractReader.NEW_LINE -> {
+        this.bracketOpened = false;
+        int correctIndent = this.currentIndent;
+        while (nextMarker != '\0' && correctIndent == this.currentIndent) {
+          this.skipStringFromMarker(owner, nextMarker, true);
+          this.skipGuessingType(owner);
+          nextMarker = this.readRawIgnoreEmptyAndNewLines();
+          if (this.skipComments(owner, nextMarker, false)) {
+            nextMarker = this.readRawIgnoreEmptyAndNewLines();
+          }
+        }
+
+        this.setReuseBuffer();
+        this.bracketOpened = previousBracketOpened;
+      }
+      default -> {
+        if (!this.isNullSkippedFromMarker(marker)) {
+          throw new IllegalStateException("Got unknown marker when reading map: " + marker);
+        }
+      }
+    }
   }
 
   @Override
@@ -1242,47 +1288,18 @@ public class YamlReader extends AbstractReader {
     }
   }
 
-  private String readNodeNameByMarker(@Nullable Field owner, char marker) {
-    synchronized (this) {
-      this.nodeIndent = this.currentIndent;
-    }
-
-    while (true) {
-      if (this.skipComments(owner, marker, false) || this.skipComments(owner, this.readRawIgnoreEmpty(), true)) {
-        marker = this.readRaw();
-      } else {
-        break;
+  private boolean isNullSkippedFromMarker(char marker) {
+    this.setSeek();
+    if (marker == 'n' && this.readRaw() == 'u' && this.readRaw() == 'l' && this.readRaw() == 'l') {
+      char endMarker = this.readRawIgnoreEmpty();
+      if (this.isEndMarker(endMarker) || (endMarker == ',' && this.bracketOpened)) {
+        this.clearSeek();
+        return true;
       }
     }
 
-    String nodeName;
-    if (marker == '"' || marker == '\'') {
-      nodeName = this.readStringFromMarker(owner, marker, true);
-    } else {
-      StringBuilder result = new StringBuilder();
-      while (true) {
-        while (marker != ':') {
-          if (this.isEndMarker(marker)) {
-            throw new IllegalStateException("Got a new line in node name: " + result);
-          }
-
-          result.append(marker);
-          marker = this.readRaw();
-        }
-
-        marker = this.readRaw();
-        if (Character.isWhitespace(marker)) {
-          this.setReuseBuffer();
-          break;
-        }
-
-        result.append(':');
-      }
-
-      nodeName = result.toString();
-    }
-
-    return nodeName;
+    this.unsetSeek();
+    return false;
   }
 
   private boolean skipChar(char expected) {

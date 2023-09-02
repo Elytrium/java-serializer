@@ -21,6 +21,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
@@ -111,7 +112,7 @@ class SerializerTest {
 
     Assertions.assertEquals("\uD83D\uDD25 final value", settings.finalField);
     Assertions.assertEquals("regular \"value\"", settings.regularField);
-    Assertions.assertEquals("regular \"value\"", settings.regularField2);
+    Assertions.assertEquals("regular ''value1'' \"value2\"", settings.regularField2);
     Assertions.assertEquals("regular \n\"value\"", settings.regularField3);
     Assertions.assertEquals((float) Math.PI, settings.regularFloatField);
     Assertions.assertEquals(Math.E, settings.regularDoubleField);
@@ -147,6 +148,7 @@ class SerializerTest {
     Assertions.assertEquals(HashMap.class, settings.int2StringMap.getClass());
     Assertions.assertEquals(Int2ObjectLinkedOpenHashMap.class, settings.int2StringMapFastUtil.getClass());
     Assertions.assertEquals(Int2ObjectLinkedOpenHashMap.class, settings.int2StringMapFastUtil2.getClass());
+    Assertions.assertEquals(LongArrayList.class, settings.int2LongListMapFastUtil.get(-15555).getClass());
 
     settings.int2StringMap.forEach((key, value) -> {
       Assertions.assertEquals(Integer.class, key.getClass());
@@ -308,7 +310,7 @@ class SerializerTest {
     public String regularField = "regular \"value\"";
 
     @YamlStringStyle(YamlWriter.StringStyle.SINGLE_QUOTED)
-    public String regularField2 = "regular \"value\"";
+    public String regularField2 = "regular ''value1'' \"value2\"";
 
     @YamlStringStyle(YamlWriter.StringStyle.MULTILINE_LITERAL_AUTO_KEPT)
     public String regularField3 = "regular \n\"value\"";
@@ -344,7 +346,12 @@ class SerializerTest {
     public Int2ObjectLinkedOpenHashMap<String> int2StringMapFastUtil = new Int2ObjectLinkedOpenHashMap<>(new int[] { 1, 15555, 44 }, new String[] { "v1", "v2", "v3" });
 
     @MapType(Int2ObjectLinkedOpenHashMap.class)
-    public Int2ObjectMap<String> int2StringMapFastUtil2 = new Int2ObjectLinkedOpenHashMap<>(new int[] {1, 15555, 44 }, new String[] {"v1", "v2", "v3" });
+    public Int2ObjectMap<String> int2StringMapFastUtil2 = new Int2ObjectLinkedOpenHashMap<>(new int[] { 1, 15555, 44 }, new String[] { "v1", "v2", "v3" });
+
+    public final/*TODO non final*/ Int2ObjectLinkedOpenHashMap<LongArrayList> int2LongListMapFastUtil = new Int2ObjectLinkedOpenHashMap<>(
+        new int[] { 1, -15555 },
+        new LongArrayList[] { LongArrayList.of(1, 2, -3, 4), LongArrayList.of(3, 2, -3, 4) }
+    );
 
     public final List<Object> objectListWithMaps = Arrays.asList(
         SerializerTest.map("test", SerializerTest.map("test2", "test")),
