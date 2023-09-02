@@ -112,18 +112,20 @@ public class SerializerConfig {
       overriddenNodeNameStyle = this.nodeNameStyle;
     }
 
-    return overriddenFieldNameStyle == overriddenNodeNameStyle
-        ? field
-        : overriddenFieldNameStyle.fromMacroCase(overriddenNodeNameStyle.toMacroCase(field));
+    return overriddenFieldNameStyle == overriddenNodeNameStyle ? field : overriddenFieldNameStyle.fromMacroCase(overriddenNodeNameStyle.toMacroCase(field));
   }
 
-  public PlaceholderReplacer<?, ?> getAndCacheReplacer(Class<? extends PlaceholderReplacer<?, ?>> replacerClass) throws ReflectiveOperationException {
-    PlaceholderReplacer<?, ?> replacer = this.cachedReplacers.get(replacerClass);
+  public PlaceholderReplacer<?, ?> getAndCacheReplacer(Class<? extends PlaceholderReplacer<?, ?>> clazz) throws ReflectiveOperationException {
+    PlaceholderReplacer<?, ?> replacer = this.cachedReplacers.get(clazz);
     if (replacer == null) {
-      Constructor<? extends PlaceholderReplacer<?, ?>> constructor = replacerClass.getDeclaredConstructor();
+      replacer = this.registeredReplacers.get(clazz);
+    }
+
+    if (replacer == null) {
+      Constructor<? extends PlaceholderReplacer<?, ?>> constructor = clazz.getDeclaredConstructor();
       constructor.setAccessible(true);
       replacer = constructor.newInstance();
-      this.cachedReplacers.put(replacerClass, replacer);
+      this.cachedReplacers.put(clazz, replacer);
     }
 
     return replacer;
@@ -131,13 +133,17 @@ public class SerializerConfig {
 
   @SuppressWarnings("unchecked")
   public <T, F> ClassSerializer<T, F> getAndCacheSerializer(Serializer serializer) throws ReflectiveOperationException {
-    Class<? extends ClassSerializer<?, ?>> serializerClass = serializer.value();
-    var configSerializer = (ClassSerializer<T, F>) this.cachedSerializers.get(serializerClass);
+    Class<? extends ClassSerializer<?, ?>> clazz = serializer.value();
+    var configSerializer = (ClassSerializer<T, F>) this.cachedSerializers.get(clazz);
     if (configSerializer == null) {
-      Constructor<? extends ClassSerializer<?, ?>> constructor = serializerClass.getDeclaredConstructor();
+      configSerializer = (ClassSerializer<T, F>) this.registeredSerializers.get(clazz);
+    }
+
+    if (configSerializer == null) {
+      Constructor<? extends ClassSerializer<?, ?>> constructor = clazz.getDeclaredConstructor();
       constructor.setAccessible(true);
       configSerializer = (ClassSerializer<T, F>) constructor.newInstance();
-      this.cachedSerializers.put(serializerClass, configSerializer);
+      this.cachedSerializers.put(clazz, configSerializer);
     }
 
     return configSerializer;
@@ -250,16 +256,6 @@ public class SerializerConfig {
     private boolean backupOnErrors = true;
     private int commentValueIndent = 0;
 
-    public Builder registerSerializer(Collection<ClassSerializer<?, ?>> serializers) {
-      serializers.forEach(serializer -> this.registeredSerializers.put(serializer.getToType(), serializer));
-      return this;
-    }
-
-    public Builder registerSerializer(ClassSerializer<?, ?> serializer) {
-      this.registeredSerializers.put(serializer.getToType(), serializer);
-      return this;
-    }
-
     public Builder registerReplacer(Collection<PlaceholderReplacer<?, ?>> replacers) {
       replacers.forEach(this::registerReplacer);
       return this;
@@ -275,9 +271,7 @@ public class SerializerConfig {
       }
 
       if (valueClass == null) {
-        throw new IllegalStateException(
-            "Failed to determine value class, please use SerializerConfig.Builder#registerPlaceholder(Class, PlaceholderReplacer)"
-        );
+        throw new IllegalStateException("Failed to determine value class, please use SerializerConfig.Builder#registerPlaceholder(Class, PlaceholderReplacer)");
       }
 
       return this.registerReplacer(valueClass, serializer);
@@ -290,6 +284,16 @@ public class SerializerConfig {
 
     public Builder registerReplacer(Class<?> valueClass, PlaceholderReplacer<?, ?> serializer) {
       this.registeredReplacers.put(valueClass, serializer);
+      return this;
+    }
+
+    public Builder registerSerializer(Collection<ClassSerializer<?, ?>> serializers) {
+      serializers.forEach(this::registerSerializer);
+      return this;
+    }
+
+    public Builder registerSerializer(ClassSerializer<?, ?> serializer) {
+      this.registeredSerializers.put(serializer.getToType(), serializer);
       return this;
     }
 

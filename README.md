@@ -48,13 +48,13 @@ Elytrium Java Serializer is uploaded to the Maven Central repository, so you can
 2) Create YamlWriter
     ```java
     Settings settings = new Settings();
-    YamlWriter writer = new YamlWriter(Files.newBufferedWriter(Path.of("/config.yml")));
+    YamlWriter writer = new YamlWriter(Files.newBufferedWriter(Path.of("config.yml")));
     writer.writeNode(settings, null);
     ```
 3) Create YamlReader
     ```java
     Settings settings = new Settings();
-    YamlReader reader = new YamlReader(Files.newBufferedReader(Path.of("./config.yml")));
+    YamlReader reader = new YamlReader(Files.newBufferedReader(Path.of("config.yml")));
     reader.readSerializableObject(settings, Settings.class);
    ```
 
@@ -76,7 +76,7 @@ Elytrium Java Serializer is uploaded to the Maven Central repository, so you can
 2) Instantiate it.
     ```java
     Settings settings = new Settings();
-    settings.reload(Path.of("./config.yml"));
+    settings.reload(Path.of("config.yml"));
     ```
 3) Done!
 

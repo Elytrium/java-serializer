@@ -85,36 +85,33 @@ public class YamlReader extends AbstractReader {
   public void readSerializableObject(@Nullable Field owner, Object holder, Class<?> clazz) {
     synchronized (this) {
       this.readBeginSerializableObject(owner);
-      Field[] fields = clazz.getDeclaredFields();
-      if (fields.length != 0) {
+      Field[] nodes = clazz.getDeclaredFields();
+      if (nodes.length != 0) {
         try {
           // Register initial values and make nodeName->field map.
           Map<String, Field> nodeFieldMap = new HashMap<>();
-          for (Field field : fields) {
+          for (Field node : nodes) {
             try {
-              field.setAccessible(true);
+              node.setAccessible(true);
             } catch (Exception e) {
               continue;
             }
 
-            this.updatePlaceholders(holder, field);
+            Object value = node.get(holder);
+            this.removePlaceholders(value);
+            this.updatePlaceholders(node, value); // Updating placeholders here in case if on reload field was written and not read yet.
 
-            OverrideNameStyle overrideNameStyle = field.getAnnotation(OverrideNameStyle.class);
+            OverrideNameStyle overrideNameStyle = node.getAnnotation(OverrideNameStyle.class);
             if (overrideNameStyle == null) {
-              overrideNameStyle = field.getType().getAnnotation(OverrideNameStyle.class);
+              overrideNameStyle = node.getType().getAnnotation(OverrideNameStyle.class);
             }
 
-            nodeFieldMap.put(
-                overrideNameStyle == null
-                    ? this.config.toNodeName(field.getName())
-                    : this.config.toNodeName(field.getName(), overrideNameStyle.field(), overrideNameStyle.node()),
-                field
-            );
+            nodeFieldMap.put(overrideNameStyle == null ? this.config.toNodeName(node.getName()) : this.config.toNodeName(node.getName(), overrideNameStyle.field(), overrideNameStyle.node()), node);
 
-            FallbackNodeNames fallbackNodeNames = field.getAnnotation(FallbackNodeNames.class);
+            FallbackNodeNames fallbackNodeNames = node.getAnnotation(FallbackNodeNames.class);
             if (fallbackNodeNames != null) {
               for (String fallbackNodeName : fallbackNodeNames.value()) {
-                nodeFieldMap.put(fallbackNodeName, field);
+                nodeFieldMap.put(fallbackNodeName, node);
               }
             }
           }
@@ -135,17 +132,8 @@ public class YamlReader extends AbstractReader {
                 if (!Modifier.isStatic(modifiers) && !Modifier.isFinal(modifiers) && !Modifier.isTransient(modifiers)
                     && node.getAnnotation(Final.class) == null && node.getType().getAnnotation(Final.class) == null
                     && node.getAnnotation(Transient.class) == null && node.getType().getAnnotation(Transient.class) == null) {
-
-                  Object value = node.get(holder);
-                  if (this.config.isRegisterPlaceholdersForCollectionEntries() && value instanceof Collection<?> collection) {
-                    for (Object entry : collection) {
-                      Placeholders.removePlaceholders(entry);
-                    }
-                  }
-
-                  Placeholders.removePlaceholders(value);
-                  this.readNode(holder, node);
-                  this.updatePlaceholders(holder, node);
+                  this.removePlaceholders(node.get(holder));
+                  this.updatePlaceholders(node, this.readNode(holder, node));
                 } else {
                   this.skipNode(node);
                 }
@@ -181,7 +169,16 @@ public class YamlReader extends AbstractReader {
     }
   }
 
-  private void updatePlaceholders(Object holder, Field node) throws ReflectiveOperationException {
+  private void removePlaceholders(Object value) throws ReflectiveOperationException {
+    Placeholders.removePlaceholders(value);
+    if (value instanceof Collection<?> collection) {
+      for (Object entry : collection) {
+        Placeholders.removePlaceholders(entry);
+      }
+    }
+  }
+
+  private void updatePlaceholders(Field node, Object value) throws ReflectiveOperationException {
     RegisterPlaceholders placeholders = node.getAnnotation(RegisterPlaceholders.class);
     if (placeholders == null) {
       placeholders = node.getType().getAnnotation(RegisterPlaceholders.class);
@@ -189,14 +186,10 @@ public class YamlReader extends AbstractReader {
 
     if (placeholders != null) {
       PlaceholderReplacer<?, ?> replacer = null;
-      Object value = node.get(holder);
       if (placeholders.replacer() == DefaultPlaceholderReplacer.class) {
-        if (value instanceof Collection<?>) {
-          replacer = this.config.getRegisteredReplacer(
-              (Class<?>) GenericUtils.getParameterType(Collection.class, node.getGenericType(), 0));
-        } else {
-          replacer = this.config.getRegisteredReplacer(node.getType());
-        }
+        replacer = value instanceof Collection<?>
+            ? this.config.getRegisteredReplacer((Class<?>) GenericUtils.getParameterType(Collection.class, node.getGenericType(), 0))
+            : this.config.getRegisteredReplacer(node.getType());
       }
 
       if (replacer == null) {
@@ -276,48 +269,6 @@ public class YamlReader extends AbstractReader {
     }
   }
 
-  private int getEscapeChar() {
-    synchronized (this) {
-      char marker;
-      return switch (marker = this.readRaw()) {
-        case '0' -> '\0';
-        case 'a' -> '\u0007';
-        case 'b' -> '\b';
-        case 't' -> '\t';
-        case 'n' -> '\n';
-        case 'v' -> '\u000B';
-        case 'f' -> '\f';
-        case 'r' -> '\r';
-        case 'e' -> '\u001B';
-        case ' ' -> ' ';
-        case '"' -> '\"';
-        case '\\' -> '\\';
-        case 'N' -> '\u0085';
-        case '_' -> '\u00A0';
-        case 'L' -> '\u2028';
-        case 'P' -> '\u2029';
-        case 'x' -> this.readHexChar(2);
-        case 'u' -> this.readHexChar(4);
-        case 'U' -> this.readHexChar(8);
-        default -> throw new IllegalStateException("Invalid escape character: \\" + marker);
-      };
-    }
-  }
-
-  private int readHexChar(int size) {
-    StringBuilder hex = new StringBuilder();
-    for (int i = 0; i < size; ++i) {
-      char character = this.readRaw();
-      if (this.isEndMarker(character)) {
-        throw new IllegalStateException("Got new line while reading hex char");
-      }
-
-      hex.append(character);
-    }
-
-    return Integer.valueOf(hex.toString(), 16);
-  }
-
   private Character readCharacterFromMarker(@Nullable Field owner, char marker) {
     Character result = null;
     switch (marker) {
@@ -325,7 +276,7 @@ public class YamlReader extends AbstractReader {
         while ((marker = this.readRaw()) != '"') {
           if (result == null) {
             if (marker == '\\') {
-              char[] characters = Character.toChars(this.getEscapeChar());
+              char[] characters = Character.toChars(this.readEscapedCharacter());
               if (characters.length != 1) {
                 throw new IllegalStateException("Supplementary char cannot be stored in Character");
               }
@@ -372,6 +323,48 @@ public class YamlReader extends AbstractReader {
     }
 
     return result;
+  }
+
+  private int readEscapedCharacter() {
+    synchronized (this) {
+      char marker;
+      return switch (marker = this.readRaw()) {
+        case '0' -> '\0';
+        case 'a' -> '\u0007';
+        case 'b' -> '\b';
+        case 't' -> '\t';
+        case 'n' -> '\n';
+        case 'v' -> '\u000B';
+        case 'f' -> '\f';
+        case 'r' -> '\r';
+        case 'e' -> '\u001B';
+        case ' ' -> ' ';
+        case '"' -> '\"';
+        case '\\' -> '\\';
+        case 'N' -> '\u0085';
+        case '_' -> '\u00A0';
+        case 'L' -> '\u2028';
+        case 'P' -> '\u2029';
+        case 'x' -> this.readHexChar(2);
+        case 'u' -> this.readHexChar(4);
+        case 'U' -> this.readHexChar(8);
+        default -> throw new IllegalStateException("Invalid escape character: \\" + marker);
+      };
+    }
+  }
+
+  private int readHexChar(int size) {
+    StringBuilder hex = new StringBuilder();
+    for (int i = 0; i < size; ++i) {
+      char character = this.readRaw();
+      if (this.isEndMarker(character)) {
+        throw new IllegalStateException("Got new line while reading hex char");
+      }
+
+      hex.append(character);
+    }
+
+    return Integer.valueOf(hex.toString(), 16);
   }
 
   @Override
@@ -552,9 +545,7 @@ public class YamlReader extends AbstractReader {
           throw new IllegalStateException("Number " + keyClazz + " for map key are not supported yet!");
         }
       } else {
-        Deque<ClassSerializer<?, Object>> serializerStack = new ArrayDeque<>(
-            Math.min(16, this.config.getRegisteredSerializers() + 1/*See AbstractReader#readNode*/)
-        );
+        Deque<ClassSerializer<?, Object>> serializerStack = new ArrayDeque<>(Math.min(16, this.config.getRegisteredSerializers() + 1/*See AbstractReader#readNode*/));
         Class<?> clazz = this.fillSerializerStack(serializerStack, keyClazz);
         if (serializerStack.isEmpty()) {
           throw new IllegalStateException("Class " + keyClazz + " for map key are not supported yet!");
@@ -846,7 +837,7 @@ public class YamlReader extends AbstractReader {
             newLineCount = 0;
 
             if (marker == '\\') {
-              for (char character : Character.toChars(this.getEscapeChar())) {
+              for (char character : Character.toChars(this.readEscapedCharacter())) {
                 result.append(character);
               }
             } else {
@@ -927,9 +918,7 @@ public class YamlReader extends AbstractReader {
         // See YamlReader#skipComments(char, boolean) for details about Character.isWhitespace(char) and YamlReader#skipComments(char, true/*!!*/).
         while (nodeName
             ? (marker != ':')
-            : (!this.isEndMarker(marker)
-               && (marker != ',' || this.bracketOpened)
-               && (!Character.isWhitespace(marker) || !this.skipComments(owner, this.readRaw(), true)))) {
+            : (!this.isEndMarker(marker) && (marker != ',' || this.bracketOpened) && (!Character.isWhitespace(marker) || !this.skipComments(owner, this.readRaw(), true)))) {
           if (nodeName && this.isEndMarker(marker)) {
             throw new IllegalStateException("Got a new line in node name: " + result);
           }

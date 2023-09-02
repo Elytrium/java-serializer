@@ -18,6 +18,9 @@ regular-list:
 regular-set:
   - "123"
   - "456"
+int-set-fast-util:
+  - 123
+  - 456
 regular-deque:
   - "123"
   - "123"
@@ -26,6 +29,14 @@ string-with-placeholders: "This is {TEST} with {TEST2}"
 string-with-placeholders-2: "This is {test} with {test2}"
 another-string-with-placeholders: "PLACEHOLDER another-placeholder"
 int-2-string-map:
+  1: "v1"
+  15555: "v2"
+  44: "v3"
+int-2-string-map-fast-util:
+  1: "v1"
+  15555: "v2"
+  44: "v3"
+int-2-string-map-fast-util-2:
   1: "v1"
   15555: "v2"
   44: "v3"

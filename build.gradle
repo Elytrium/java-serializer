@@ -13,8 +13,8 @@ this.group = "net.elytrium"
 this.version = "1.0.3-SNAPSHOT"
 
 compileJava() {
-  sourceCompatibility = "17"
-  targetCompatibility = "17"
+  sourceCompatibility = JavaVersion.VERSION_17
+  targetCompatibility = JavaVersion.VERSION_17
   options.getRelease().set(8)
 
   options.setEncoding("UTF-8")
@@ -30,6 +30,8 @@ dependencies() {
 
   compileOnly("com.github.spotbugs:spotbugs-annotations:$spotbugsVersion")
   testCompileOnly("com.github.spotbugs:spotbugs-annotations:$spotbugsVersion")
+
+  testImplementation("it.unimi.dsi:fastutil-core:8.5.12")
 
   testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
   testImplementation("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
@@ -51,7 +53,7 @@ checkstyle() {
 spotbugsMain() {
   reports.register("html") {
     required = true
-    outputLocation.fileValue(file("$buildDir/reports/spotbugs/main/spotbugs.html"))
+    outputLocation.value(layout.buildDirectory.file("reports/spotbugs/main/spotbugs.html"))
     stylesheet = "fancy-hist.xsl"
   }
 }

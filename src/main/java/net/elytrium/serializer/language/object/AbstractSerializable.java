@@ -98,7 +98,7 @@ public abstract class AbstractSerializable {
     try {
       Path parent = path.getParent();
       if (parent == null) {
-        throw new NullPointerException("Config parent path is null for " + path);
+        throw new NullPointerException("Parent path is null for " + path);
       }
 
       Files.createDirectories(parent);
@@ -126,14 +126,10 @@ public abstract class AbstractSerializable {
     try {
       Path parent = path.getParent();
       if (parent == null) {
-        throw new NullPointerException("Config parent path is null for " + path);
+        throw new NullPointerException("Parent path is null for " + path);
       }
 
-      Files.copy(
-          path,
-          parent.resolve(path.getFileName() + "_backup_" + LocalDateTime.now().format(AbstractSerializable.BACKUP_DATE_PATTERN)),
-          StandardCopyOption.REPLACE_EXISTING
-      );
+      Files.copy(path, parent.resolve(path.getFileName() + "_backup_" + LocalDateTime.now().format(AbstractSerializable.BACKUP_DATE_PATTERN)), StandardCopyOption.REPLACE_EXISTING);
     } catch (IOException e) {
       throw new SerializableWriteException(e);
     }

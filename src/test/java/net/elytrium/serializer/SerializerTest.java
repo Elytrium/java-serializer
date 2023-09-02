@@ -18,6 +18,9 @@
 package net.elytrium.serializer;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
@@ -116,6 +119,8 @@ class SerializerTest {
     Assertions.assertEquals(RegularEnum.TRUE, settings.enumField);
     Assertions.assertEquals(3, settings.regularList.size());
     Assertions.assertEquals(2, settings.regularSet.size());
+    Assertions.assertEquals(2, settings.intSetFastUtil.size());
+    Assertions.assertEquals(IntLinkedOpenHashSet.class, settings.intSetFastUtil.getClass());
     Assertions.assertEquals(3, settings.regularDeque.size());
     Assertions.assertEquals("string value", settings.prepend.stringField);
     Assertions.assertEquals("string value", settings.prepend.fieldWithCommentAtSameLine);
@@ -140,6 +145,8 @@ class SerializerTest {
     Assertions.assertEquals(3, settings.chaosMapList.size());
     Assertions.assertEquals(2, settings.chaosMap.size());
     Assertions.assertEquals(HashMap.class, settings.int2StringMap.getClass());
+    Assertions.assertEquals(Int2ObjectLinkedOpenHashMap.class, settings.int2StringMapFastUtil.getClass());
+    Assertions.assertEquals(Int2ObjectLinkedOpenHashMap.class, settings.int2StringMapFastUtil2.getClass());
 
     settings.int2StringMap.forEach((key, value) -> {
       Assertions.assertEquals(Integer.class, key.getClass());
@@ -318,6 +325,8 @@ class SerializerTest {
     @CollectionType(HashSet.class)
     public Collection<String> regularSet = Arrays.asList("123", "123", "456");
 
+    public IntLinkedOpenHashSet intSetFastUtil = IntLinkedOpenHashSet.of(123, 456);
+
     public Deque<String> regularDeque = new ArrayDeque<>(Arrays.asList("123", "123", "456"));
 
     @RegisterPlaceholders({"{TEST}", "TEST2"})
@@ -331,6 +340,11 @@ class SerializerTest {
 
     @MapType(HashMap.class)
     public Map<Integer, String> int2StringMap = SerializerTest.map(1, "v1", 15555, "v2", 44, "v3");
+
+    public Int2ObjectLinkedOpenHashMap<String> int2StringMapFastUtil = new Int2ObjectLinkedOpenHashMap<>(new int[] { 1, 15555, 44 }, new String[] { "v1", "v2", "v3" });
+
+    @MapType(Int2ObjectLinkedOpenHashMap.class)
+    public Int2ObjectMap<String> int2StringMapFastUtil2 = new Int2ObjectLinkedOpenHashMap<>(new int[] {1, 15555, 44 }, new String[] {"v1", "v2", "v3" });
 
     public final List<Object> objectListWithMaps = Arrays.asList(
         SerializerTest.map("test", SerializerTest.map("test2", "test")),

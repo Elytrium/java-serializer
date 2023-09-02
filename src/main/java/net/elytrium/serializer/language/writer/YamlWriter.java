@@ -208,22 +208,19 @@ public class YamlWriter extends AbstractWriter {
   }
 
   private boolean shouldUseQuotes(char[] characters, boolean avoidSpecial) {
-    boolean shouldUseQuotes = false;
     for (char character : characters) {
       if (this.shouldUseQuotes(character, avoidSpecial)) {
-        shouldUseQuotes = true;
-        break;
+        return true;
       }
     }
 
-    return shouldUseQuotes;
+    return false;
   }
 
   private boolean shouldUseQuotes(char value, boolean avoidSpecial) {
-    return value == '\0' || value == '\u0007' || value == '\b' || value == '\t' || value == '\n' || value == '\u000B'
-           || value == '\f' || value == '\r' || value == '\u001B'
-           || (avoidSpecial && (value == ' ' || value == '#'/*Not escaping, but avoiding usage without quotes.*/ || value == '"'))
-           || value == '\'' || value == '\\' || value == '\u0085' || value == '\u00A0' || value == '\u2028' || value == '\u2029';
+    return (avoidSpecial && (value == ' ' || value == '#' || value == '"'))
+           || value == '\0' || value == '\u0007' || value == '\b' || value == '\t' || value == '\n' || value == '\u000B' || value == '\f' || value == '\r'
+           || value == '\u001B' || value == '\'' || value == '\\' || value == '\u0085' || value == '\u00A0' || value == '\u2028' || value == '\u2029';
   }
 
   private void writeString0(@Nullable Field owner, String value, boolean nodeName) {

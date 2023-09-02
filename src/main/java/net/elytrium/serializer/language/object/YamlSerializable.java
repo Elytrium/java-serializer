@@ -31,6 +31,7 @@ import net.elytrium.serializer.language.writer.YamlWriter;
 public class YamlSerializable extends AbstractSerializable {
 
   private final Map<Field, YamlWriter.StringStyle> stringStyleMap = new HashMap<>();
+
   private String singleIndent;
 
   public YamlSerializable() {

@@ -25,12 +25,12 @@ import java.lang.annotation.Target;
 import java.util.Map;
 
 /**
- * Changes map type
+ * Specifies which map type to use.
  */
-@SuppressWarnings("rawtypes")
 @Documented
+@Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.FIELD})
+@SuppressWarnings("rawtypes")
 public @interface MapType {
 
   /**

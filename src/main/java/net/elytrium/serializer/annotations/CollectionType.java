@@ -25,12 +25,12 @@ import java.lang.annotation.Target;
 import java.util.Collection;
 
 /**
- * Changes collection type
+ * Specifies which collection type to use.
  */
-@SuppressWarnings("rawtypes")
 @Documented
+@Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.FIELD})
+@SuppressWarnings("rawtypes")
 public @interface CollectionType {
 
   /**

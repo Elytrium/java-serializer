@@ -24,7 +24,6 @@ import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import net.elytrium.serializer.SerializerConfig;
 import net.elytrium.serializer.annotations.Comment;
@@ -56,12 +55,6 @@ public abstract class AbstractWriter {
     this.writer = writer;
   }
 
-  private boolean isFieldVisible(Field field) {
-    int modifiers = field.getModifiers();
-    return !Modifier.isStatic(modifiers) && !Modifier.isTransient(modifiers)
-        && field.getAnnotation(Transient.class) == null && field.getType().getAnnotation(Transient.class) == null;
-  }
-
   public void writeSerializableObject(Object value, Class<?> clazz) {
     this.writeSerializableObject(null, value, clazz);
   }
@@ -88,12 +81,6 @@ public abstract class AbstractWriter {
       for (Field field : fields) {
         ++counter;
         if (this.isFieldVisible(field)) {
-          try {
-            field.setAccessible(true);
-          } catch (Exception e) {
-            continue;
-          }
-
           try {
             NewLine newLines = field.getAnnotation(NewLine.class);
             if (newLines == null) {
@@ -132,15 +119,23 @@ public abstract class AbstractWriter {
               this.writeBeginMap(owner);
             }
 
-            this.writeMapEntry(field,
-                overrideNameStyle == null
-                    ? this.config.toNodeName(field.getName())
-                    : this.config.toNodeName(field.getName(), overrideNameStyle.field(), overrideNameStyle.node()),
+            Comment[] comments;
+            Comment[] classComments = field.getType().getAnnotationsByType(Comment.class);
+            Comment[] fieldComments = field.getAnnotationsByType(Comment.class);
+            if (classComments.length == 0 || fieldComments.length == 0) {
+              comments = classComments.length == 0 ? fieldComments : classComments;
+            } else {
+              comments = new Comment[classComments.length + fieldComments.length];
+              System.arraycopy(classComments, 0, comments, 0, classComments.length);
+              System.arraycopy(fieldComments, 0, comments, classComments.length, fieldComments.length);
+            }
+
+            this.writeMapEntry(
+                field,
+                overrideNameStyle == null ? this.config.toNodeName(field.getName()) : this.config.toNodeName(field.getName(), overrideNameStyle.field(), overrideNameStyle.node()),
                 nodeValue,
                 counter != lastVisibleFieldIndex,
-                Stream.of(field.getType().getAnnotationsByType(Comment.class), field.getAnnotationsByType(Comment.class))
-                    .flatMap(Stream::of)
-                    .toArray(Comment[]::new)
+                comments
             );
           } catch (ReflectiveOperationException e) {
             throw new ReflectionException(e);
@@ -158,6 +153,17 @@ public abstract class AbstractWriter {
         this.writeLine();
       }
     }
+  }
+
+  private boolean isFieldVisible(Field field) {
+    try {
+      field.setAccessible(true);
+    } catch (Exception e) {
+      return false;
+    }
+
+    int modifiers = field.getModifiers();
+    return !Modifier.isStatic(modifiers) && !Modifier.isTransient(modifiers) && field.getAnnotation(Transient.class) == null && field.getType().getAnnotation(Transient.class) == null;
   }
 
   private Object serializeValue(Object nodeValue) {
@@ -252,25 +258,25 @@ public abstract class AbstractWriter {
   public void writeCommentStart(Comment.At at) {
     this.writeCommentStart(null, at);
   }
-  
+
   public abstract void writeCommentStart(@Nullable Field owner, Comment.At at);
 
   public void writeCommentValueIndent(Comment.At at, int indent) {
     this.writeCommentValueIndent(null, at, indent);
   }
-  
+
   public abstract void writeCommentValueIndent(@Nullable Field owner, Comment.At at, int indent);
 
   public void writeCommentEnd(Comment.At at) {
     this.writeCommentEnd(null, at);
   }
-  
+
   public abstract void writeCommentEnd(@Nullable Field owner, Comment.At at);
 
   public void writeNodeName(String nodeName) {
     this.writeNodeName(null, nodeName);
   }
-  
+
   public abstract void writeNodeName(@Nullable Field owner, String nodeName);
 
   public void writeNode(Object value, Comment[] comments) {
@@ -331,37 +337,37 @@ public abstract class AbstractWriter {
   public void writeEmptyMap() {
     this.writeEmptyMap(null);
   }
-  
+
   public abstract void writeEmptyMap(@Nullable Field owner);
 
   public void writeBeginMap() {
     this.writeBeginMap(null);
   }
-  
+
   public abstract void writeBeginMap(@Nullable Field owner);
 
   public void writeMapPreCommentEntryJoin() {
     this.writeMapPreCommentEntryJoin(null);
   }
-  
+
   public abstract void writeMapPreCommentEntryJoin(@Nullable Field owner);
 
   public void writeMapPostCommentEntryJoin() {
     this.writeMapPostCommentEntryJoin(null);
   }
-  
+
   public abstract void writeMapPostCommentEntryJoin(@Nullable Field owner);
 
   public void writeMapEntryEnd() {
     this.writeMapEntryEnd(null);
   }
-  
+
   public abstract void writeMapEntryEnd(@Nullable Field owner);
 
   public void writeEndMap() {
     this.writeEndMap(null);
   }
-  
+
   public abstract void writeEndMap(@Nullable Field owner);
 
   public void writeList(Collection<Object> value, Comment[] comments) {
@@ -396,37 +402,37 @@ public abstract class AbstractWriter {
   public void writeEmptyList() {
     this.writeEmptyList(null);
   }
-  
+
   public abstract void writeEmptyList(@Nullable Field owner);
 
   public void writeBeginList() {
     this.writeBeginList(null);
   }
-  
+
   public abstract void writeBeginList(@Nullable Field owner);
 
   public void writeListEntry(Object entry) {
     this.writeListEntry(null, entry);
   }
-  
+
   public abstract void writeListEntry(@Nullable Field owner, Object entry);
 
   public void writeListEntryJoin() {
     this.writeListEntryJoin(null);
   }
-  
+
   public abstract void writeListEntryJoin(@Nullable Field owner);
 
   public void writeListEntryEnd() {
     this.writeListEntryEnd(null);
   }
-  
+
   public abstract void writeListEntryEnd(@Nullable Field owner);
 
   public void writeEndList() {
     this.writeEndList(null);
   }
-  
+
   public abstract void writeEndList(@Nullable Field owner);
 
   public abstract void writeLine();
@@ -434,13 +440,13 @@ public abstract class AbstractWriter {
   public void writeString(String value) {
     this.writeString(null, value);
   }
-  
+
   public abstract void writeString(@Nullable Field owner, String value);
 
   public void writeCharacter(char value) {
     this.writeCharacter(null, value);
   }
-  
+
   public abstract void writeCharacter(@Nullable Field owner, char value);
 
   public void writeEnum(Enum<?> value) {

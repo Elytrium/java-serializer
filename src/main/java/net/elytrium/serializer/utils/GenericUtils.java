@@ -23,21 +23,10 @@ import java.lang.reflect.TypeVariable;
 
 public class GenericUtils {
 
-  public static int getParameterIndex(TypeVariable<?>[] variables, TypeVariable<?> expected) {
-    for (int i = 0; i < variables.length; ++i) {
-      if (variables[i].getName().equals(expected.getName())) {
-        return i;
-      }
-    }
-
-    return -1;
-  }
-
   public static Type getParameterTypeFromSuperclass(Class<?> parent, Type type, Type superclass, int searchIndex) {
-    Type superclassType = GenericUtils.getParameterType0(parent, superclass, searchIndex);
+    Type superclassType = GenericUtils.getParameterTypeOrNull(parent, superclass, searchIndex);
     if (superclassType instanceof TypeVariable<?> typeVariable && type instanceof ParameterizedType parameterizedType) {
-      Class<?> rawSuperclass = (Class<?>) parameterizedType.getRawType();
-      int index = GenericUtils.getParameterIndex(rawSuperclass.getTypeParameters(), typeVariable);
+      int index = GenericUtils.getParameterIndex(((Class<?>) parameterizedType.getRawType()).getTypeParameters(), typeVariable);
       if (index != -1) {
         return parameterizedType.getActualTypeArguments()[index];
       }
@@ -46,13 +35,17 @@ public class GenericUtils {
     return superclassType;
   }
 
-  private static Type getParameterType0(Class<?> parent, Type type, int index) {
+  public static Type getParameterType(Class<?> parent, Type type, int index) {
+    Type parameterType = GenericUtils.getParameterTypeOrNull(parent, type, index);
+    return parameterType == null ? Object.class : parameterType;
+  }
+
+  private static Type getParameterTypeOrNull(Class<?> parent, Type type, int index) {
     if (type == null) {
       return null;
     }
 
     Class<?> clazz = null;
-
     if (type instanceof ParameterizedType parameterizedType) {
       clazz = (Class<?>) parameterizedType.getRawType();
       if (clazz.equals(parent)) {
@@ -65,8 +58,7 @@ public class GenericUtils {
     }
 
     if (clazz != null) {
-      Type genericSuperclass = clazz.getGenericSuperclass();
-      Type superclassType = GenericUtils.getParameterTypeFromSuperclass(parent, type, genericSuperclass, index);
+      Type superclassType = GenericUtils.getParameterTypeFromSuperclass(parent, type, clazz.getGenericSuperclass(), index);
       if (superclassType != null) {
         return superclassType;
       }
@@ -82,8 +74,13 @@ public class GenericUtils {
     return null;
   }
 
-  public static Type getParameterType(Class<?> parent, Type type, int index) {
-    Type parameterType = GenericUtils.getParameterType0(parent, type, index);
-    return parameterType == null ? Object.class : parameterType;
+  public static int getParameterIndex(TypeVariable<?>[] variables, TypeVariable<?> expected) {
+    for (int i = 0; i < variables.length; ++i) {
+      if (expected.equals(variables[i])) {
+        return i;
+      }
+    }
+
+    return -1;
   }
 }

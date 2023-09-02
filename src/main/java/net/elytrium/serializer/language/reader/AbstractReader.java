@@ -75,40 +75,38 @@ public abstract class AbstractReader {
   public void readSerializableObject(Object holder, Class<?> clazz) {
     this.readSerializableObject(null, holder, clazz);
   }
-  
+
   public abstract void readSerializableObject(@Nullable Field owner, Object holder, Class<?> clazz);
 
   public String readNodeName() {
     return this.readNodeName(null);
   }
-  
+
   public abstract String readNodeName(@Nullable Field owner);
 
   public void readBeginSerializableObject() {
     this.readBeginSerializableObject(null);
   }
-  
+
   public abstract void readBeginSerializableObject(@Nullable Field owner);
 
   public void readSerializableObjectEntryJoin() {
     this.readSerializableObjectEntryJoin(null);
   }
-  
+
   public abstract void readSerializableObjectEntryJoin(@Nullable Field owner);
 
   public boolean readEndSerializableObject() {
     return this.readEndSerializableObject(null);
   }
-  
+
   public abstract boolean readEndSerializableObject(@Nullable Field owner);
 
-  public void readNode(Object holder, Field node) {
+  public Object readNode(Object holder, Field node) {
     synchronized (this) {
+      Deque<ClassSerializer<?, Object>> serializerStack = new ArrayDeque<>(Math.min(16, this.config.getRegisteredSerializers() + 1/*If first iteration and annotation serializer not cached yet.*/));
       Type type = node.getGenericType();
       Class<?> clazz = node.getType();
-      Deque<ClassSerializer<?, Object>> serializerStack = new ArrayDeque<>(
-          Math.min(16, this.config.getRegisteredSerializers() + 1/*If first iteration and annotation serializer not cached yet.*/)
-      );
 
       Serializer serializer = node.getAnnotation(Serializer.class);
       if (serializer == null) {
@@ -146,6 +144,8 @@ public abstract class AbstractReader {
         } else {
           node.set(holder, value);
         }
+
+        return value;
       } catch (IllegalAccessException e) {
         throw new ReflectionException(e);
       }
@@ -205,13 +205,9 @@ public abstract class AbstractReader {
         return this.readGuessingType(owner);
       } else if (type instanceof ParameterizedType parameterizedType) {
         Class<?> clazz = (Class<?>) parameterizedType.getRawType();
-        if (Map.class.isAssignableFrom(clazz)) {
-          return this.readMapByType(owner, parameterizedType);
-        } else if (Collection.class.isAssignableFrom(clazz)) {
-          return this.readCollectionByType(owner, parameterizedType, clazz);
-        } else {
-          return this.readGuessingType(owner);
-        }
+        return Map.class.isAssignableFrom(clazz) ? this.readMapByType(owner, parameterizedType)
+            : Collection.class.isAssignableFrom(clazz) ? this.readCollectionByType(owner, parameterizedType, clazz)
+            : this.readGuessingType(owner);
       } else if (type instanceof Class<?> clazz) {
         if (Map.class.isAssignableFrom(clazz)) {
           return this.readMapByType(owner, type);
@@ -256,6 +252,7 @@ public abstract class AbstractReader {
     }
   }
 
+  @SuppressWarnings("unchecked")
   @SuppressFBWarnings("NP_LOAD_OF_KNOWN_NULL_VALUE")
   private Collection<Object> readCollectionByType(Field owner, Type type, Class<?> clazz) {
     Type collectionEntryType = GenericUtils.getParameterType(Collection.class, type, 0);
@@ -263,18 +260,17 @@ public abstract class AbstractReader {
       CollectionType collectionType = owner.getAnnotation(CollectionType.class);
       if (collectionType != null) {
         try {
-          //noinspection unchecked
-          return this.readCollection(owner,
-              (Collection<Object>) collectionType.value().getDeclaredConstructor().newInstance(),
-              collectionEntryType);
+          var constructor = collectionType.value().getDeclaredConstructor();
+          constructor.setAccessible(true);
+          return this.readCollection(owner, (Collection<Object>) constructor.newInstance(), collectionEntryType);
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
           throw new SerializableReadException(e);
         }
       } else if (Collection.class.isAssignableFrom(owner.getType())) {
         try {
-          //noinspection unchecked
-          return this.readCollection(owner,
-              (Collection<Object>) owner.getType().getDeclaredConstructor().newInstance(), collectionEntryType);
+          Constructor<?> constructor = owner.getType().getDeclaredConstructor();
+          constructor.setAccessible(true);
+          return this.readCollection(owner, (Collection<Object>) constructor.newInstance(), collectionEntryType);
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
           throw new SerializableReadException(e);
         } catch (NoSuchMethodException e) {
@@ -283,15 +279,12 @@ public abstract class AbstractReader {
       }
     }
 
-    if (Set.class.isAssignableFrom(clazz)) {
-      return this.readSet(owner, collectionEntryType);
-    } else if (Queue.class.isAssignableFrom(clazz)) {
-      return this.readDeque(owner, collectionEntryType);
-    } else {
-      return this.readList(owner, collectionEntryType);
-    }
+    return Set.class.isAssignableFrom(clazz) ? this.readSet(owner, collectionEntryType)
+        : Queue.class.isAssignableFrom(clazz) ? this.readDeque(owner, collectionEntryType)
+        : this.readList(owner, collectionEntryType);
   }
 
+  @SuppressWarnings("unchecked")
   @SuppressFBWarnings("NP_LOAD_OF_KNOWN_NULL_VALUE")
   private Map<Object, Object> readMapByType(Field owner, Type type) {
     Type mapKeyType = GenericUtils.getParameterType(Map.class, type, 0);
@@ -300,17 +293,17 @@ public abstract class AbstractReader {
       MapType mapType = owner.getAnnotation(MapType.class);
       if (mapType != null) {
         try {
-          //noinspection unchecked
-          return this.readMap(owner,
-              (Map<Object, Object>) mapType.value().getDeclaredConstructor().newInstance(), mapKeyType, mapValueType);
+          var constructor = mapType.value().getDeclaredConstructor();
+          constructor.setAccessible(true);
+          return this.readMap(owner, (Map<Object, Object>) constructor.newInstance(), mapKeyType, mapValueType);
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
           throw new SerializableReadException(e);
         }
       } else if (Map.class.isAssignableFrom(owner.getType())) {
         try {
-          //noinspection unchecked
-          return this.readMap(owner,
-              (Map<Object, Object>) owner.getType().getDeclaredConstructor().newInstance(), mapKeyType, mapValueType);
+          Constructor<?> constructor = owner.getType().getDeclaredConstructor();
+          constructor.setAccessible(true);
+          return this.readMap(owner, (Map<Object, Object>) constructor.newInstance(), mapKeyType, mapValueType);
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
           throw new SerializableReadException(e);
         } catch (NoSuchMethodException e) {
@@ -325,7 +318,7 @@ public abstract class AbstractReader {
   public Object readGuessingType() {
     return this.readGuessingType(null);
   }
-  
+
   public abstract Object readGuessingType(@Nullable Field owner);
 
   public Map<Object, Object> readMap(@Nullable Field owner) {
@@ -367,7 +360,7 @@ public abstract class AbstractReader {
   public List<Object> readList(Type type) {
     return this.readList(null, type);
   }
-  
+
   public List<Object> readList(@Nullable Field owner, Type type) {
     return this.readCollection(owner, new ArrayList<>(), type);
   }
@@ -399,13 +392,13 @@ public abstract class AbstractReader {
   public String readString() {
     return this.readString(null);
   }
-  
+
   public abstract String readString(@Nullable Field owner);
 
   public Character readCharacter() {
     return this.readCharacter(null);
   }
-  
+
   public abstract Character readCharacter(@Nullable Field owner);
 
   @SuppressWarnings("unchecked")
@@ -417,7 +410,7 @@ public abstract class AbstractReader {
   public Boolean readBoolean() {
     return this.readBoolean(null);
   }
-  
+
   public abstract Boolean readBoolean(@Nullable Field owner);
 
   public Number readNumber(Class<?> clazz) {
@@ -445,13 +438,13 @@ public abstract class AbstractReader {
   public Double readDouble() {
     return this.readDouble(null);
   }
-  
+
   public abstract Double readDouble(@Nullable Field owner);
 
   public Long readLong() {
     return this.readLong(null);
   }
-  
+
   public abstract Long readLong(@Nullable Field owner);
 
   public void skipNode(Field node) {
@@ -481,31 +474,31 @@ public abstract class AbstractReader {
   public void skipMap() {
     this.skipMap(null);
   }
-  
+
   public abstract void skipMap(@Nullable Field owner);
 
   public void skipList() {
     this.skipList(null);
   }
-  
+
   public abstract void skipList(@Nullable Field owner);
 
   public void skipString() {
     this.skipString(null);
   }
-  
+
   public abstract void skipString(@Nullable Field owner);
 
   public void skipGuessingType() {
     this.skipGuessingType(null);
   }
-  
+
   public abstract void skipGuessingType(@Nullable Field owner);
 
   public boolean skipComments(char marker, boolean reuse) {
     return this.skipComments(null, marker, reuse);
   }
-  
+
   public abstract boolean skipComments(@Nullable Field owner, char marker, boolean reuse);
 
   public char readRawIgnoreEmptyAndNewLines() {

@@ -25,26 +25,35 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 
 @SuppressWarnings("unchecked")
 public class Placeholders {
 
   private static final Map<Integer, Placeholderable<?, ?>> PLACEHOLDERS = new HashMap<>();
 
-  public static <T, P, R> R replace(T value, Object... values) {
+  public static <T, R> R replace(T value, Object... values) {
     return Placeholders.replaceFor(value, value, values);
   }
 
   public static <H, T, P, R> R replaceFor(H holder, T value, Object... values) {
     var placeholderable = (Placeholderable<T, P>) Placeholders.PLACEHOLDERS.get(System.identityHashCode(holder));
     if (holder instanceof Collection<?> collection) {
-      List<T> list = new ArrayList<>(collection.size());
+      List<T> result = new ArrayList<>(collection.size());
       for (Object entry : collection) {
-        list.add(placeholderable.replacer.replace((T) entry, placeholderable.placeholders, values));
+        if (placeholderable == null) {
+          placeholderable = (Placeholderable<T, P>) Placeholders.PLACEHOLDERS.get(System.identityHashCode(entry));
+        }
+
+        if (placeholderable == null) {
+          throw new IllegalStateException("Invalid input!");
+        }
+
+        result.add(placeholderable.replacer.replace((T) entry, placeholderable.placeholders, values));
       }
 
-      return (R) list;
+      return (R) result;
+    } else if (placeholderable == null) {
+      throw new IllegalStateException("Invalid input!");
     } else {
       return (R) placeholderable.replacer.replace(value, placeholderable.placeholders, values);
     }
@@ -140,7 +149,6 @@ public class Placeholders {
       this.setPlaceholders(placeholders, wrapWithBraces);
     }
 
-    // https://cdn.discordapp.com/attachments/593589868777439233/1135283936726106153/3.png
     private Class<P> determinePlaceholdersClass() {
       for (Type interfaceType : this.replacer.getClass().getGenericInterfaces()) {
         if (interfaceType instanceof ParameterizedType type && type.getRawType() == PlaceholderReplacer.class) {
@@ -153,9 +161,14 @@ public class Placeholders {
     }
 
     private void setPlaceholders(String[] placeholders, boolean wrapWithBraces) {
-      this.placeholders = Stream.of(placeholders)
-          .map(placeholder -> wrapWithBraces && !(placeholder.startsWith("{") && placeholder.endsWith("}")) ? '{' + placeholder + '}' : placeholder)
-          .toArray(length -> (P[]) Array.newInstance(this.placeholdersClass, length));
+      this.placeholders = (P[]) Array.newInstance(this.placeholdersClass, placeholders.length);
+      for (int i = placeholders.length - 1; i >= 0; --i) {
+        String placeholder = placeholders[i];
+        this.placeholders[i] = this.replacer.transformPlaceholder(wrapWithBraces && (placeholder.charAt(0) != '{' || placeholder.charAt(placeholder.length() - 1) != '}')
+            ? '{' + placeholder + '}'
+            : placeholder
+        );
+      }
     }
   }
 }
