@@ -297,9 +297,9 @@ public abstract class AbstractReader {
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
           throw new SerializableReadException(e);
         }
-      } else if (Collection.class.isAssignableFrom(owner.getType())) {
+      } else {
         try {
-          Constructor<?> constructor = owner.getType().getDeclaredConstructor();
+          Constructor<?> constructor = GenericUtils.unwrapClassParameterizedType(type).getDeclaredConstructor();
           constructor.setAccessible(true);
           return this.readCollection(owner, (Collection<Object>) constructor.newInstance(), collectionEntryType);
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {

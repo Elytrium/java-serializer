@@ -348,7 +348,7 @@ class SerializerTest {
     @MapType(Int2ObjectLinkedOpenHashMap.class)
     public Int2ObjectMap<String> int2StringMapFastUtil2 = new Int2ObjectLinkedOpenHashMap<>(new int[] { 1, 15555, 44 }, new String[] { "v1", "v2", "v3" });
 
-    public final/*TODO non final*/ Int2ObjectLinkedOpenHashMap<LongArrayList> int2LongListMapFastUtil = new Int2ObjectLinkedOpenHashMap<>(
+    public Int2ObjectLinkedOpenHashMap<LongArrayList> int2LongListMapFastUtil = new Int2ObjectLinkedOpenHashMap<>(
         new int[] { 1, -15555 },
         new LongArrayList[] { LongArrayList.of(1, 2, -3, 4), LongArrayList.of(3, 2, -3, 4) }
     );

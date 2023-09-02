@@ -23,6 +23,20 @@ import java.lang.reflect.TypeVariable;
 
 public class GenericUtils {
 
+  public static Class<?> unwrapClassParameterizedType(Type type) {
+    if (type instanceof ParameterizedType parameterizedType) {
+      if (parameterizedType.getRawType() instanceof Class<?> clazz) {
+        return clazz;
+      } else {
+        throw new IllegalArgumentException("Can only unwrap Class<?> from ParameterizedType");
+      }
+    } else if (type instanceof Class<?> clazz) {
+      return clazz;
+    } else {
+      throw new IllegalArgumentException("Can only unwrap Class<?> or ParameterizedType of Class<?>");
+    }
+  }
+
   public static Type getParameterTypeFromSuperclass(Class<?> parent, Type type, Type superclass, int searchIndex) {
     Type superclassType = GenericUtils.getParameterTypeOrNull(parent, superclass, searchIndex);
     if (superclassType instanceof TypeVariable<?> typeVariable && type instanceof ParameterizedType parameterizedType) {
