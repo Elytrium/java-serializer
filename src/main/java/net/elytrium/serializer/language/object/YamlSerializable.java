@@ -20,6 +20,7 @@ package net.elytrium.serializer.language.object;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.lang.reflect.Field;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import net.elytrium.serializer.SerializerConfig;
@@ -40,6 +41,10 @@ public class YamlSerializable extends AbstractSerializable {
 
   public YamlSerializable(SerializerConfig config) {
     super(config);
+  }
+
+  public YamlSerializable(Path serializablePath, SerializerConfig config) {
+    super(serializablePath, config);
   }
 
   @Override

@@ -37,6 +37,8 @@ public abstract class AbstractSerializable {
 
   private static final DateTimeFormatter BACKUP_DATE_PATTERN = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH.mm.ss");
 
+  private final Path serializablePath;
+
   private SerializerConfig config;
 
   protected AbstractSerializable() {
@@ -44,6 +46,11 @@ public abstract class AbstractSerializable {
   }
 
   protected AbstractSerializable(SerializerConfig config) {
+    this(null, config);
+  }
+
+  protected AbstractSerializable(Path serializablePath, SerializerConfig config) {
+    this.serializablePath = serializablePath;
     this.config = config;
   }
 
@@ -53,6 +60,15 @@ public abstract class AbstractSerializable {
 
   public SerializerConfig getConfig() {
     return this.config;
+  }
+
+  public LoadResult reload() {
+    if (this.serializablePath == null) {
+      throw new IllegalStateException("This AbstractSerializable was constructed without serializablePath. "
+          + "Either construct AbstractSerializable with serializablePath or call AbstractSerializable#reload(Path) method.");
+    }
+
+    return this.reload(this.serializablePath);
   }
 
   public LoadResult reload(Path path) {
@@ -76,6 +92,15 @@ public abstract class AbstractSerializable {
     return result;
   }
 
+  public LoadResult load() {
+    if (this.serializablePath == null) {
+      throw new IllegalStateException("This AbstractSerializable was constructed without serializablePath. "
+          + "Either construct AbstractSerializable with serializablePath or call AbstractSerializable#load(Path) method.");
+    }
+
+    return this.load(this.serializablePath);
+  }
+
   public LoadResult load(Path path) {
     Path absolutePath = path.toAbsolutePath();
     if (Files.exists(absolutePath)) {
@@ -93,6 +118,15 @@ public abstract class AbstractSerializable {
     AbstractReader abstractReader = this.getReader(reader);
     abstractReader.readSerializableObject(this, this.getClass());
     return !abstractReader.isBackupPreferred();
+  }
+
+  public void save() {
+    if (this.serializablePath == null) {
+      throw new IllegalStateException("This AbstractSerializable was constructed without serializablePath. "
+          + "Either construct AbstractSerializable with serializablePath or call AbstractSerializable#save(Path) method.");
+    }
+
+    this.save(this.serializablePath);
   }
 
   public void save(Path path) {
@@ -122,6 +156,15 @@ public abstract class AbstractSerializable {
     } catch (IOException e) {
       throw new SerializableWriteException(e);
     }
+  }
+
+  public void backup() {
+    if (this.serializablePath == null) {
+      throw new IllegalStateException("This AbstractSerializable was constructed without serializablePath. "
+          + "Either construct AbstractSerializable with serializablePath or call AbstractSerializable#backup(Path) method.");
+    }
+
+    this.save(this.serializablePath);
   }
 
   public void backup(Path path) {

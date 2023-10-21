@@ -19,6 +19,7 @@ package net.elytrium.serializer.language.object;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.nio.file.Path;
 import net.elytrium.serializer.SerializerConfig;
 import net.elytrium.serializer.language.reader.AbstractReader;
 import net.elytrium.serializer.language.reader.JsonReader;
@@ -34,6 +35,10 @@ public class JsonSerializable extends AbstractSerializable {
 
   public JsonSerializable(SerializerConfig config) {
     super(config);
+  }
+
+  public JsonSerializable(Path serializablePath, SerializerConfig config) {
+    super(serializablePath, config);
   }
 
   @Override
