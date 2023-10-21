@@ -115,6 +115,9 @@ chaos-map:
   test-2:
     test-2-1:
       - "element"
+list-serializable-map:
+  - string-string-map:
+      key1: "value1"
 # PREPEND class comment
 # PREPEND comment Line 1
 # PREPEND comment Line 2

@@ -147,6 +147,7 @@ class SerializerTest {
     Assertions.assertEquals(3, settings.listOfString2ObjectMap.size());
     Assertions.assertEquals(3, settings.chaosMapList.size());
     Assertions.assertEquals(2, settings.chaosMap.size());
+    Assertions.assertEquals(1, settings.listSerializableMap.size());
     Assertions.assertEquals(HashMap.class, settings.int2StringMap.getClass());
     Assertions.assertEquals(Int2ObjectLinkedOpenHashMap.class, settings.int2StringMapFastUtil.getClass());
     Assertions.assertEquals(Int2ObjectLinkedOpenHashMap.class, settings.int2StringMapFastUtil2.getClass());
@@ -383,6 +384,8 @@ class SerializerTest {
         "test-2", SerializerTest.map("test-2-1", Arrays.asList("element"))
     );
 
+    public List<CustomSection> listSerializableMap = Arrays.asList(new CustomSection());
+
     @Comment({
         @CommentValue("PREPEND comment Line 1"),
         @CommentValue("PREPEND comment Line 2")
@@ -569,6 +572,15 @@ class SerializerTest {
       public ExternalNestedClass(String name) {
         this.name = name;
       }
+    }
+  }
+
+  public static class CustomSection {
+
+    public Map<String, String> stringStringMap = new LinkedHashMap<>();
+
+    public CustomSection() {
+      this.stringStringMap.put("key1", "value1");
     }
   }
 

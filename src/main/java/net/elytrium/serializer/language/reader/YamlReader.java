@@ -84,6 +84,7 @@ public class YamlReader extends AbstractReader {
   @SuppressFBWarnings("SA_FIELD_SELF_COMPARISON")
   public void readSerializableObject(@Nullable Field owner, Object holder, Class<?> clazz) {
     synchronized (this) {
+      this.unsetTempRestoreNewLine();
       this.readBeginSerializableObject(owner);
       Field[] nodes = clazz.getDeclaredFields();
       if (nodes.length != 0) {
@@ -531,6 +532,7 @@ public class YamlReader extends AbstractReader {
       marker = AbstractReader.NEW_LINE;
     }
 
+    this.unsetTempRestoreNewLine();
     switch (marker) {
       case '[': {
         char nextMarker = this.readRawIgnoreEmptyAndNewLines();
