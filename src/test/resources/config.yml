@@ -28,6 +28,9 @@ regular-deque:
 string-with-placeholders: "This is {TEST} with {TEST2}"
 string-with-placeholders-2: "This is {test} with {test2}"
 another-string-with-placeholders: "PLACEHOLDER another-placeholder"
+test-list-section:
+  data:
+    - "test"
 int-2-string-map:
   1: "v1"
   15555: "v2"

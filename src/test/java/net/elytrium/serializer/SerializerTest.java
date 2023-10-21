@@ -32,6 +32,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
@@ -140,6 +141,7 @@ class SerializerTest {
     );
     Assertions.assertEquals("value 1 value 2", Placeholders.replace(settings.anotherStringWithPlaceholders, "value 1", "value 2"));
     Assertions.assertEquals("PLACEHOLDER another-placeholder", settings.anotherStringWithPlaceholders);
+    Assertions.assertEquals(1, settings.testListSection.data.originalList.size());
     Assertions.assertEquals(2, settings.prepend.sameLine.append.nestedLists.size());
     Assertions.assertEquals(2, settings.objectListWithMaps.size());
     Assertions.assertEquals(3, settings.listOfString2ObjectMap.size());
@@ -298,7 +300,8 @@ class SerializerTest {
       public String deserialize(String from) {
         return from.trim().isEmpty() ? null : from;
       }
-    }).registerSerializer(new PathSerializer()).setCommentValueIndent(1).setLineSeparator("\n").build();
+    }).registerSerializer(new PathSerializer()).registerSerializer(new TestListSerializer())
+        .setCommentValueIndent(1).setLineSeparator("\n").build();
 
     Settings() {
       super(Settings.CONFIG);
@@ -339,6 +342,8 @@ class SerializerTest {
 
     @RegisterPlaceholders(value = {"PLACEHOLDER", "another-placeholder"}, wrapWithBraces = false)
     public String anotherStringWithPlaceholders = "PLACEHOLDER another-placeholder";
+
+    public TestListSection testListSection = new TestListSection();
 
     @MapType(HashMap.class)
     public Map<Integer, String> int2StringMap = SerializerTest.map(1, "v1", 15555, "v2", 44, "v3");
@@ -590,6 +595,19 @@ class SerializerTest {
     }
   }
 
+  public static class TestListData {
+    private final List<String> originalList;
+
+    public TestListData(List<String> originalList) {
+      this.originalList = new ArrayList<>(originalList);
+    }
+  }
+
+  public static class TestListSection {
+
+    public final TestListData data = new TestListData(List.of("test"));
+  }
+
   public static class DateSerializer extends ClassSerializer<Date, Long> {
 
     public DateSerializer() {
@@ -621,6 +639,19 @@ class SerializerTest {
     @Override
     public Path deserialize(String from) {
       return Paths.get(from);
+    }
+  }
+
+  public static class TestListSerializer extends ClassSerializer<TestListData, List<String>> {
+
+    @Override
+    public List<String> serialize(TestListData from) {
+      return from.originalList;
+    }
+
+    @Override
+    public TestListData deserialize(List<String> from) {
+      return new TestListData(from);
     }
   }
 

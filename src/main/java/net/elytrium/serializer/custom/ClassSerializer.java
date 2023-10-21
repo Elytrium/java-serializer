@@ -23,7 +23,9 @@ import java.lang.reflect.Type;
 public abstract class ClassSerializer<T, F> {
 
   private final Class<T> toClass;
+  private final Type toType;
   private final Class<F> fromClass;
+  private final Type fromType;
 
   @SuppressWarnings("unchecked")
   protected ClassSerializer() {
@@ -31,14 +33,18 @@ public abstract class ClassSerializer<T, F> {
     this.toClass = actualTypeArguments[0] instanceof Class<?>
         ? (Class<T>) actualTypeArguments[0]
         : (Class<T>) ((ParameterizedType) actualTypeArguments[0]).getRawType();
+    this.toType = actualTypeArguments[0];
     this.fromClass = actualTypeArguments[1] instanceof Class<?>
         ? (Class<F>) actualTypeArguments[1]
         : (Class<F>) ((ParameterizedType) actualTypeArguments[1]).getRawType();
+    this.fromType = actualTypeArguments[1];
   }
 
   protected ClassSerializer(Class<T> toClass, Class<F> fromClass) {
     this.toClass = toClass;
+    this.toType = toClass;
     this.fromClass = fromClass;
+    this.fromType = fromClass;
   }
 
   public F serialize(T from) {
@@ -49,11 +55,19 @@ public abstract class ClassSerializer<T, F> {
     throw new UnsupportedOperationException();
   }
 
-  public Class<T> getToType() {
+  public Class<T> getToClass() {
     return this.toClass;
   }
 
-  public Class<F> getFromType() {
+  public Type getToType() {
+    return this.toType;
+  }
+
+  public Class<F> getFromClass() {
     return this.fromClass;
+  }
+
+  public Type getFromType() {
+    return this.fromType;
   }
 }

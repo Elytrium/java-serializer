@@ -293,7 +293,7 @@ public class SerializerConfig {
     }
 
     public Builder registerSerializer(ClassSerializer<?, ?> serializer) {
-      this.registeredSerializers.put(serializer.getToType(), serializer);
+      this.registeredSerializers.put(serializer.getToClass(), serializer);
       return this;
     }
 

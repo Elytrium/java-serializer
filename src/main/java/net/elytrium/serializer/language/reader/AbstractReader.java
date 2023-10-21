@@ -116,19 +116,19 @@ public abstract class AbstractReader {
       if (serializer != null) {
         try {
           ClassSerializer<?, Object> classSerializer = this.config.getAndCacheSerializer(serializer);
-          if (clazz.isAssignableFrom(classSerializer.getToType())) {
+          if (clazz.isAssignableFrom(classSerializer.getToClass())) {
             serializerStack.add(classSerializer);
             type = classSerializer.getFromType();
-            clazz = classSerializer.getFromType();
+            clazz = classSerializer.getFromClass();
           }
         } catch (ReflectiveOperationException e) {
           throw new ReflectionException(e);
         }
       }
 
-      clazz = this.fillSerializerStack(serializerStack, clazz);
-      if (!serializerStack.isEmpty()) {
-        type = clazz;
+      Type typeSerialized = this.fillSerializerStack(serializerStack, clazz);
+      if (!serializerStack.isEmpty() && typeSerialized != null) {
+        type = typeSerialized;
       }
 
       try {
@@ -152,29 +152,31 @@ public abstract class AbstractReader {
     }
   }
 
-  protected Class<?> fillSerializerStack(Deque<ClassSerializer<?, Object>> serializerStack, Class<?> clazz) {
+  protected Type fillSerializerStack(Deque<ClassSerializer<?, Object>> serializerStack, Class<?> clazz) {
+    Type type = null;
     while (true) {
       ClassSerializer<?, Object> classSerializer = this.config.getRegisteredSerializer(clazz);
-      if (classSerializer == null || !clazz.isAssignableFrom(classSerializer.getToType())) {
+      if (classSerializer == null || !clazz.isAssignableFrom(classSerializer.getToClass())) {
         break;
       }
 
       serializerStack.add(classSerializer);
-      clazz = classSerializer.getFromType();
+      clazz = classSerializer.getFromClass();
+      type = classSerializer.getFromType();
 
       if (classSerializer.getToType() == classSerializer.getFromType()) {
         break;
       }
     }
 
-    return clazz;
+    return type;
   }
 
   protected Object readAndDeserializeByType(@Nullable Field owner, Object holder, Type type, Deque<ClassSerializer<?, Object>> serializerStack) {
     Object value = this.readByType(owner, holder, type);
     while (!serializerStack.isEmpty()) {
       ClassSerializer<?, Object> classSerializer = serializerStack.pop();
-      if (classSerializer.getFromType().isInstance(value)) {
+      if (classSerializer.getFromClass().isInstance(value)) {
         value = classSerializer.deserialize(value);
       }
     }

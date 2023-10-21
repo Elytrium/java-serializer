@@ -47,7 +47,7 @@ import net.elytrium.serializer.placeholders.PlaceholderReplacer;
 import net.elytrium.serializer.placeholders.Placeholders;
 import net.elytrium.serializer.utils.GenericUtils;
 
-@SuppressWarnings({"SizeReplaceableByIsEmpty", "StringRepeatCanBeUsed"}) // Ignore modern methods, because we support up to Java 8.
+@SuppressWarnings({"StringRepeatCanBeUsed"}) // Ignore modern methods, because we support up to Java 8.
 public class YamlReader extends AbstractReader {
 
   private static final Logger LOGGER = Logger.getLogger(YamlReader.class.getName());
@@ -503,16 +503,16 @@ public class YamlReader extends AbstractReader {
         }
       } else {
         Deque<ClassSerializer<?, Object>> serializerStack = new ArrayDeque<>(Math.min(16, this.config.getRegisteredSerializers() + 1/*See AbstractReader#readNode*/));
-        Class<?> clazz = this.fillSerializerStack(serializerStack, keyClazz);
+        Type type = this.fillSerializerStack(serializerStack, keyClazz);
         if (serializerStack.isEmpty()) {
           throw new IllegalStateException("Class " + keyClazz + " for map key are not supported yet!");
         }
 
-        if (Map.class.isAssignableFrom(clazz) || Collection.class.isAssignableFrom(clazz)) {
-          throw new IllegalStateException("Class " + clazz + " for map key is not supported!");
+        if (!(type instanceof Class<?>) || Map.class.isAssignableFrom((Class<?>) type) || Collection.class.isAssignableFrom((Class<?>) type)) {
+          throw new IllegalStateException("Class " + type + " for map key is not supported!");
         }
 
-        key = this.readAndDeserializeByType(owner, null, clazz, serializerStack);
+        key = this.readAndDeserializeByType(owner, null, type, serializerStack);
       }
     } else {
       throw new IllegalStateException("Type " + keyType + " for map key are not supported yet!");
