@@ -77,9 +77,10 @@ public abstract class AbstractSerializable {
   }
 
   public LoadResult load(Path path) {
-    if (Files.exists(path)) {
+    Path absolutePath = path.toAbsolutePath();
+    if (Files.exists(absolutePath)) {
       try {
-        return this.load(Files.newBufferedReader(path)) ? LoadResult.SUCCESS : LoadResult.BACKUP_PREFERRED;
+        return this.load(Files.newBufferedReader(absolutePath)) ? LoadResult.SUCCESS : LoadResult.BACKUP_PREFERRED;
       } catch (IOException e) {
         throw new SerializableReadException(e);
       }
@@ -96,13 +97,14 @@ public abstract class AbstractSerializable {
 
   public void save(Path path) {
     try {
-      Path parent = path.getParent();
+      Path absolutePath = path.toAbsolutePath();
+      Path parent = absolutePath.getParent();
       if (parent == null) {
-        throw new NullPointerException("Parent path is null for " + path);
+        throw new NullPointerException("Parent path is null for " + absolutePath);
       }
 
       Files.createDirectories(parent);
-      this.save(Files.newBufferedWriter(path));
+      this.save(Files.newBufferedWriter(absolutePath));
     } catch (IOException e) {
       throw new SerializableWriteException(e);
     }
@@ -124,12 +126,13 @@ public abstract class AbstractSerializable {
 
   public void backup(Path path) {
     try {
-      Path parent = path.getParent();
+      Path absolutePath = path.toAbsolutePath();
+      Path parent = absolutePath.getParent();
       if (parent == null) {
-        throw new NullPointerException("Parent path is null for " + path);
+        throw new NullPointerException("Parent path is null for " + absolutePath);
       }
 
-      Files.copy(path, parent.resolve(path.getFileName() + "_backup_" + LocalDateTime.now().format(AbstractSerializable.BACKUP_DATE_PATTERN)), StandardCopyOption.REPLACE_EXISTING);
+      Files.copy(absolutePath, parent.resolve(absolutePath.getFileName() + "_backup_" + LocalDateTime.now().format(AbstractSerializable.BACKUP_DATE_PATTERN)), StandardCopyOption.REPLACE_EXISTING);
     } catch (IOException e) {
       throw new SerializableWriteException(e);
     }
