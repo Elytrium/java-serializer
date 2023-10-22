@@ -25,14 +25,14 @@ Elytrium Java Serializer is uploaded to the Maven Central repository, so you can
      <dependency>
        <groupId>net.elytrium</groupId>
        <artifactId>serializer</artifactId>
-       <version>1.1.0</version>
+       <version>1.1.1</version>
      </dependency>
    </dependencies>
    ```
 - Gradle (build.gradle):
    ```groovy
    dependencies {
-     implementation("net.elytrium:serializer:1.1.0")
+     implementation("net.elytrium:serializer:1.1.1")
    }
    ```
 
