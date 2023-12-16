@@ -156,7 +156,7 @@ public abstract class AbstractReader {
     Type type = null;
     while (true) {
       ClassSerializer<?, Object> classSerializer = this.config.getRegisteredSerializer(clazz);
-      if (classSerializer == null || !clazz.isAssignableFrom(classSerializer.getToClass())) {
+      if (classSerializer == null || !classSerializer.getToClass().isAssignableFrom(clazz)) {
         break;
       }
 
